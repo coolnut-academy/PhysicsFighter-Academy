@@ -1,0 +1,251 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================================================
+    // Helper Functions
+    // ========================================================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Get user data from Firestore
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Check if user has a specific role
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+    
+    // Check if user is Super Admin
+    function isSuperAdmin() {
+      return hasRole('super_admin');
+    }
+    
+    // Check if user is Admin (Instructor)
+    function isAdmin() {
+      return hasRole('admin');
+    }
+    
+    // Check if user is Student
+    function isStudent() {
+      return hasRole('student');
+    }
+    
+    // Check if user owns the resource (by ownerId field)
+    function isOwner(ownerId) {
+      return isAuthenticated() && request.auth.uid == ownerId;
+    }
+    
+    // Check if user is trying to access their own document
+    function isSelf(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Validate that role is not being changed
+    function roleNotChanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+    }
+    
+    // Check if enrollment is active and not expired
+    function isEnrollmentValid(enrollmentData) {
+      return enrollmentData.status == 'active' 
+        && enrollmentData.expiresAt.toMillis() > request.time.toMillis();
+    }
+
+    // ========================================================================
+    // Users Collection
+    // ========================================================================
+    
+    match /users/{userId} {
+      // Read: Users can read their own data, Super Admin can read all
+      allow read: if isSelf(userId) || isSuperAdmin();
+      
+      // Create: Only Super Admin can create new users
+      // (User registration should be handled via Firebase Auth + Cloud Function)
+      allow create: if isSuperAdmin();
+      
+      // Update: Users can update their own data (except role), Super Admin can update anyone
+      allow update: if (isSelf(userId) && roleNotChanged()) || isSuperAdmin();
+      
+      // Delete: Only Super Admin can delete users
+      allow delete: if isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Courses Collection
+    // ========================================================================
+    
+    match /courses/{courseId} {
+      // Read: Everyone can read published courses, Admins can read their own unpublished courses, Super Admin can read all
+      allow read: if resource.data.isPublished == true 
+                  || isOwner(resource.data.ownerId) 
+                  || isSuperAdmin();
+      
+      // Create: Only Admins and Super Admins can create courses
+      // Ensure ownerId matches the authenticated user (unless Super Admin)
+      allow create: if (isAdmin() && request.resource.data.ownerId == request.auth.uid) 
+                    || isSuperAdmin();
+      
+      // Update: Only course owner (Admin) or Super Admin can update
+      // Ensure ownerId cannot be changed
+      allow update: if (isOwner(resource.data.ownerId) 
+                      && request.resource.data.ownerId == resource.data.ownerId) 
+                    || isSuperAdmin();
+      
+      // Delete: Only course owner (Admin) or Super Admin can delete
+      allow delete: if isOwner(resource.data.ownerId) || isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Enrollments Collection
+    // ========================================================================
+    
+    match /enrollments/{enrollmentId} {
+      // Read: Students can read their own enrollments, 
+      //       Admins can read enrollments for their courses,
+      //       Super Admin can read all
+      allow read: if isSelf(resource.data.studentId) 
+                  || isOwner(resource.data.ownerId) 
+                  || isSuperAdmin();
+      
+      // Create: Students can create enrollments for themselves,
+      //         Super Admin can create any enrollment
+      allow create: if (isStudent() && request.resource.data.studentId == request.auth.uid) 
+                    || isSuperAdmin();
+      
+      // Update: Only Super Admin can update enrollments (for approval flow)
+      //         Students can update progress field only
+      allow update: if isSuperAdmin() 
+                    || (isSelf(resource.data.studentId) 
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'overallProgress', 'lastAccessedAt', 'completedAt', 'updatedAt']));
+      
+      // Delete: Only Super Admin can delete enrollments
+      allow delete: if isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Payment Slips Collection
+    // ========================================================================
+    
+    match /paymentSlips/{slipId} {
+      // Read: Students can read their own slips,
+      //       Admins can read slips for their courses (where ownerId matches),
+      //       Super Admin can read all
+      allow read: if isSelf(resource.data.studentId) 
+                  || isOwner(resource.data.ownerId) 
+                  || isSuperAdmin();
+      
+      // Create: Students can create payment slips for themselves
+      allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+      
+      // Update: Only the course owner (Admin) or Super Admin can update status/review fields
+      //         Students can only update before review (status == 'pending')
+      allow update: if (isOwner(resource.data.ownerId) || isSuperAdmin()) 
+                    || (isSelf(resource.data.studentId) && resource.data.status == 'pending');
+      
+      // Delete: Only Super Admin can delete payment slips
+      allow delete: if isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Reviews Collection
+    // ========================================================================
+    
+    match /reviews/{reviewId} {
+      // Read: Published reviews can be read by anyone,
+      //       Students can read their own reviews,
+      //       Course owners can read reviews for their courses,
+      //       Super Admin can read all
+      allow read: if resource.data.isPublished == true 
+                  || isSelf(resource.data.studentId) 
+                  || isOwner(get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.ownerId)
+                  || isSuperAdmin();
+      
+      // Create: Only students who are enrolled can create reviews
+      allow create: if isStudent() 
+                    && request.resource.data.studentId == request.auth.uid
+                    && exists(/databases/$(database)/documents/enrollments/$(request.resource.data.enrollmentId));
+      
+      // Update: Students can update their own reviews,
+      //         Course owners can add instructor responses,
+      //         Super Admin can update anything
+      allow update: if isSelf(resource.data.studentId)
+                    || (isOwner(get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.ownerId)
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructorResponse', 'instructorResponseAt', 'updatedAt']))
+                    || isSuperAdmin();
+      
+      // Delete: Students can delete their own reviews, Super Admin can delete any
+      allow delete: if isSelf(resource.data.studentId) || isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Revenue Records Collection
+    // ========================================================================
+    
+    match /revenueRecords/{recordId} {
+      // Read: Admins can read their own revenue records, Super Admin can read all
+      allow read: if isOwner(resource.data.ownerId) || isSuperAdmin();
+      
+      // Create/Update/Delete: Only Super Admin or Cloud Functions (via service account)
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Admin Statistics Collection
+    // ========================================================================
+    
+    match /adminStatistics/{userId} {
+      // Read: Admins can read their own statistics, Super Admin can read all
+      allow read: if isSelf(userId) || isSuperAdmin();
+      
+      // Create/Update/Delete: Only Super Admin or Cloud Functions (via service account)
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Platform Statistics Collection
+    // ========================================================================
+    
+    match /platformStatistics/{statId} {
+      // Read: Only Super Admin can read platform-wide statistics
+      allow read: if isSuperAdmin();
+      
+      // Create/Update/Delete: Only Super Admin or Cloud Functions (via service account)
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Notifications Collection
+    // ========================================================================
+    
+    match /notifications/{notificationId} {
+      // Read: Users can read their own notifications, Super Admin can read all
+      allow read: if isSelf(resource.data.userId) || isSuperAdmin();
+      
+      // Create: Super Admin or Cloud Functions
+      allow create: if isSuperAdmin();
+      
+      // Update: Users can mark their own notifications as read, Super Admin can update any
+      allow update: if (isSelf(resource.data.userId) 
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt']))
+                    || isSuperAdmin();
+      
+      // Delete: Users can delete their own notifications, Super Admin can delete any
+      allow delete: if isSelf(resource.data.userId) || isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Default Deny All Other Collections
+    // ========================================================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
