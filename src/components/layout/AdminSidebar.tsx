@@ -12,18 +12,18 @@ import {
 import { cn } from '@/lib/utils';
 
 const sidebarItems = [
-          { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { href: '/admin/courses', label: 'My Courses', icon: BookOpen },
-          { href: '/admin/payments', label: 'Payment Slips', icon: Receipt },
-          { href: '/admin/revenue', label: 'Revenue', icon: DollarSign },
-          { href: '/admin/settings', label: 'Settings', icon: Settings },
+          { href: '/admin/dashboard', label: 'ห้องบัญชาการ', icon: LayoutDashboard },
+          { href: '/admin/courses', label: 'คอร์สของฉัน', icon: BookOpen },
+          { href: '/admin/payments', label: 'สลิปชำระเงิน', icon: Receipt },
+          { href: '/admin/revenue', label: 'รายได้', icon: DollarSign },
+          { href: '/admin/settings', label: 'ตั้งค่า', icon: Settings },
 ];
 
 export function AdminSidebar() {
           const pathname = usePathname();
 
           return (
-                    <aside className="w-64 border-r border-white/10 bg-dark-bg-secondary/50 backdrop-blur-sm">
+                    <aside className="w-64 border-r-4 border-ink-black bg-white min-h-screen">
                               <nav className="p-4 space-y-2">
                                         {sidebarItems.map((item) => {
                                                   const Icon = item.icon;
@@ -34,17 +34,17 @@ export function AdminSidebar() {
                                                                       key={item.href}
                                                                       href={item.href}
                                                                       className={cn(
-                                                                                'flex items-center gap-3 px-4 py-3 rounded-lg transition-all group',
+                                                                                'flex items-center gap-3 px-4 py-3 font-bold uppercase text-sm transition-all border-2',
                                                                                 isActive
-                                                                                          ? 'bg-neon-magenta/20 text-neon-magenta border border-neon-magenta/30 shadow-[0_0_15px_rgba(255,0,255,0.2)]'
-                                                                                          : 'text-dark-text-secondary hover:text-neon-magenta hover:bg-neon-magenta/10 hover:border hover:border-neon-magenta/20'
+                                                                                          ? 'bg-fighter-red text-white border-ink-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] -skew-x-3'
+                                                                                          : 'bg-white text-ink-black border-transparent hover:border-ink-black hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-skew-x-3'
                                                                       )}
                                                             >
                                                                       <Icon className={cn(
                                                                                 'w-5 h-5 transition-all',
-                                                                                isActive ? 'text-neon-magenta' : 'group-hover:text-neon-magenta'
+                                                                                isActive ? 'text-white' : 'text-fighter-red'
                                                                       )} />
-                                                                      <span className="font-medium">{item.label}</span>
+                                                                      <span style={{ transform: isActive ? 'skewX(3deg)' : 'none' }}>{item.label}</span>
                                                             </Link>
                                                   );
                                         })}

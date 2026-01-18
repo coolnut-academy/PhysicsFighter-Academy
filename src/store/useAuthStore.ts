@@ -49,10 +49,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
            * Call this once in root layout to start listening to auth state
            */
           initialize: () => {
+                    // Safety check for Auth instance
+                    if (!auth) {
+                              console.error('Firebase Auth not initialized');
+                              set({
+                                        initializing: false,
+                                        error: 'Authentication system failed to initialize'
+                              });
+                              return () => { };
+                    }
+
+                    // Set a safety timeout to stop loading if Firebase hangs
+                    const safetyTimeout = setTimeout(() => {
+                              if (get().initializing) {
+                                        console.warn('Auth initialization timed out, forcing fallback');
+                                        set({ initializing: false });
+                              }
+                    }, 3000); // 3 seconds - faster fallback
+
                     const unsubscribe = onAuthStateChanged(
                               auth,
                               async (firebaseUser) => {
-                                        set({ initializing: true });
+                                        clearTimeout(safetyTimeout); // Clear timeout on first response
+                                        // Don't reset initializing to true here, as it might cause flickering or loop
+                                        // set({ initializing: true }); 
 
                                         if (firebaseUser) {
                                                   try {
@@ -99,6 +119,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                                         }
                               },
                               (error) => {
+                                        clearTimeout(safetyTimeout);
                                         console.error('Auth state change error:', error);
                                         set({
                                                   firebaseUser: null,
@@ -109,7 +130,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                               }
                     );
 
-                    return unsubscribe;
+                    return () => {
+                              clearTimeout(safetyTimeout);
+                              unsubscribe();
+                    };
           },
 
           /**

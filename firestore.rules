@@ -12,29 +12,25 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Get user data from Firestore
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
-    // Check if user has a specific role
-    function hasRole(role) {
-      return isAuthenticated() && getUserData().role == role;
+    // Get user role from their document
+    function getUserRole() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc.data.role;
     }
     
     // Check if user is Super Admin
     function isSuperAdmin() {
-      return hasRole('super_admin');
+      return isAuthenticated() && getUserRole() == 'super_admin';
     }
     
     // Check if user is Admin (Instructor)
     function isAdmin() {
-      return hasRole('admin');
+      return isAuthenticated() && getUserRole() == 'admin';
     }
     
-    // Check if user is Student
-    function isStudent() {
-      return hasRole('student');
+    // Check if user is Admin or Super Admin
+    function isAdminOrSuperAdmin() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'super_admin');
     }
     
     // Check if user owns the resource (by ownerId field)
@@ -48,8 +44,10 @@ service cloud.firestore {
     }
     
     // Validate that role is not being changed
+    // With setDoc merge, request.resource.data contains the merged result
+    // So we just check if the role value will be the same after the update
     function roleNotChanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+      return request.resource.data.role == resource.data.role;
     }
     
     // Check if enrollment is active and not expired
@@ -66,9 +64,12 @@ service cloud.firestore {
       // Read: Users can read their own data, Super Admin can read all
       allow read: if isSelf(userId) || isSuperAdmin();
       
-      // Create: Only Super Admin can create new users
-      // (User registration should be handled via Firebase Auth + Cloud Function)
-      allow create: if isSuperAdmin();
+      // Create: Users can create their own document during registration (student only)
+      // Super Admin can create users with any role
+      allow create: if isSuperAdmin()
+                    || (isSelf(userId) 
+                        && request.resource.data.role == 'student'
+                        && request.resource.data.isActive == true);
       
       // Update: Users can update their own data (except role), Super Admin can update anyone
       allow update: if (isSelf(userId) && roleNotChanged()) || isSuperAdmin();

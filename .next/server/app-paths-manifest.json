@@ -1,4 +1,10 @@
 {
-  "/not-found": "app/not-found.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/super-admin/dashboard/page": "app/super-admin/dashboard/page.js",
+  "/super-admin/courses/page": "app/super-admin/courses/page.js",
+  "/super-admin/users/page": "app/super-admin/users/page.js",
+  "/super-admin/payments/page": "app/super-admin/payments/page.js",
+  "/super-admin/analytics/page": "app/super-admin/analytics/page.js"
 }

@@ -1,0 +1,61 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // ========================================================================
+    // Helper Functions
+    // ========================================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // ========================================================================
+    // Storage Rules
+    // ========================================================================
+
+    // Course thumbnails and PDFs
+    // Path: courses/{userId}/{filename}
+    // Path: courses/{userId}/pdfs/{filename}
+    match /courses/{userId}/{allPaths=**} {
+      // Anyone can read (public course thumbnails)
+      allow read: if true;
+      
+      // Only owner can write
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+
+    // Payment slips
+    // Path: payment-slips/{userId}/{filename}
+    match /payment-slips/{userId}/{allPaths=**} {
+      // Only owner can read their own slips
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Only owner can upload their own slips
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+
+    // User avatars
+    // Path: avatars/{userId}/{filename}
+    match /avatars/{userId}/{allPaths=**} {
+      // Anyone can read (public avatars)
+      allow read: if true;
+      
+      // Only owner can upload their own avatar
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+
+    // QR Code images for payments (bank qr codes)
+    // Path: qr-codes/{userId}/{filename}
+    match /qr-codes/{userId}/{allPaths=**} {
+      // Anyone can read (shown in checkout)
+      allow read: if true;
+      
+      // Only owner can upload
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+  }
+}

@@ -1,14 +1,32 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Anton, Teko } from "next/font/google";
 import "./globals.css";
 import { AuthInitializer } from "@/components/auth/AuthInitializer";
 import { Toaster } from "@/components/ui/toaster";
 
-const inter = Inter({ subsets: ["latin"] });
+// Body font - clean and readable
+const inter = Inter({
+          subsets: ["latin"],
+          variable: "--font-inter"
+});
+
+// Heading font - Bold, impactful, arcade style
+const anton = Anton({
+          weight: "400",
+          subsets: ["latin"],
+          variable: "--font-anton"
+});
+
+// Alternative heading font
+const teko = Teko({
+          weight: ["300", "400", "500", "600", "700"],
+          subsets: ["latin"],
+          variable: "--font-teko"
+});
 
 export const metadata: Metadata = {
-          title: "Physics Fighter Academy - Educational Platform",
-          description: "Learn physics through interactive courses and expert instructors",
+          title: "Physics Fighter Academy - Train Your Mind",
+          description: "Master physics through battle-tested courses and expert training",
 };
 
 export default function RootLayout({
@@ -17,10 +35,10 @@ export default function RootLayout({
           children: React.ReactNode;
 }>) {
           return (
-                    <html lang="en" className="dark">
-                              <body className={inter.className}>
+                    <html lang="en">
+                              <body className={`${inter.variable} ${anton.variable} ${teko.variable} font-sans antialiased`}>
                                         <AuthInitializer />
-                                        <div className="min-h-screen bg-dark-bg-primary cyber-grid-bg">
+                                        <div className="min-h-screen bg-paper-white text-ink-black">
                                                   {children}
                                         </div>
                                         <Toaster />

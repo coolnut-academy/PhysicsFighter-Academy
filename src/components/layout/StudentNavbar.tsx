@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Zap, BookOpen, GraduationCap, LogOut, User } from 'lucide-react';
+import { Swords, BookOpen, GraduationCap, LogOut, User, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
           DropdownMenu,
@@ -17,100 +17,113 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
 
 const navItems = [
-          { href: '/dashboard', label: 'Dashboard', icon: GraduationCap },
-          { href: '/courses', label: 'Browse Courses', icon: BookOpen },
-          { href: '/my-courses', label: 'My Courses', icon: BookOpen },
+          { href: '/dashboard', label: 'หน้าหลัก', icon: GraduationCap },
+          { href: '/courses', label: 'ค้นหาคอร์ส', icon: BookOpen },
+          { href: '/my-courses', label: 'คอร์สของฉัน', icon: Trophy },
 ];
 
 export function StudentNavbar() {
           const pathname = usePathname();
+          const router = useRouter();
           const { user, logout } = useAuthStore();
 
           const handleLogout = async () => {
                     try {
                               await logout();
+                              router.push('/');
                     } catch (error) {
                               console.error('Logout error:', error);
                     }
           };
 
           return (
-                    <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-lg bg-dark-bg-primary/80">
+                    <nav className="sticky top-0 z-50 bg-white border-b-4 border-ink-black">
                               <div className="container mx-auto px-4">
                                         <div className="flex items-center justify-between h-16">
-                                                  {/* Logo */}
-                                                  <Link href="/dashboard" className="flex items-center gap-2">
-                                                            <Zap className="w-6 h-6 text-neon-cyan" />
-                                                            <span className="text-xl font-bold text-gradient">Physics Fighter</span>
+                                                  {/* 🥋 Logo */}
+                                                  <Link href="/dashboard" className="flex items-center gap-3">
+                                                            <div className="bg-fighter-red p-2 border-2 border-ink-black -skew-x-6">
+                                                                      <Swords className="w-6 h-6 text-white" style={{ transform: 'skewX(6deg)' }} />
+                                                            </div>
+                                                            <span className="text-xl font-heading uppercase text-ink-black -skew-x-3">
+                                                                      Physics Fighter
+                                                            </span>
                                                   </Link>
 
                                                   {/* Navigation Links */}
-                                                  <div className="hidden md:flex items-center gap-6">
+                                                  <div className="hidden md:flex items-center gap-2">
                                                             {navItems.map((item) => {
                                                                       const Icon = item.icon;
-                                                                      const isActive = pathname === item.href;
+                                                                      const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
                                                                       return (
                                                                                 <Link
                                                                                           key={item.href}
                                                                                           href={item.href}
                                                                                           className={cn(
-                                                                                                    'flex items-center gap-2 px-4 py-2 rounded-lg transition-all',
+                                                                                                    'px-4 py-2 font-bold uppercase text-sm transition-all -skew-x-3 border-2',
                                                                                                     isActive
-                                                                                                              ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
-                                                                                                              : 'text-dark-text-secondary hover:text-neon-cyan hover:bg-neon-cyan/10'
+                                                                                                              ? 'bg-fighter-red text-white border-ink-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'
+                                                                                                              : 'bg-white text-ink-black border-transparent hover:border-ink-black hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
                                                                                           )}
                                                                                 >
-                                                                                          <Icon className="w-4 h-4" />
-                                                                                          <span>{item.label}</span>
+                                                                                          <span style={{ transform: 'skewX(3deg)' }} className="flex items-center gap-2">
+                                                                                                    <Icon className="w-4 h-4" />
+                                                                                                    {item.label}
+                                                                                          </span>
                                                                                 </Link>
                                                                       );
                                                             })}
                                                   </div>
 
-                                                  {/* User Menu */}
-                                                  <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                      <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-all">
-                                                                                <Avatar className="w-8 h-8 border-2 border-neon-cyan/30">
-                                                                                          <AvatarImage src={user?.profile.avatarUrl} />
-                                                                                          <AvatarFallback className="bg-neon-cyan/20 text-neon-cyan text-xs">
-                                                                                                    {user && getInitials(user.profile.firstName, user.profile.lastName)}
-                                                                                          </AvatarFallback>
-                                                                                </Avatar>
-                                                                                <span className="hidden md:block text-sm">
-                                                                                          {user?.profile.firstName}
-                                                                                </span>
-                                                                      </button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="w-56 glass-card border-white/10">
-                                                                      <DropdownMenuLabel>
-                                                                                <div className="flex flex-col space-y-1">
-                                                                                          <p className="text-sm font-medium">
-                                                                                                    {user?.profile.firstName} {user?.profile.lastName}
-                                                                                          </p>
-                                                                                          <p className="text-xs text-dark-text-muted">
-                                                                                                    {user?.profile.email}
-                                                                                          </p>
+                                                  {/* User Dropdown */}
+                                                  <div className="flex items-center gap-4">
+                                                            <DropdownMenu>
+                                                                      <DropdownMenuTrigger className="focus:outline-none">
+                                                                                <div className="flex items-center gap-2 px-3 py-2 border-2 border-ink-black bg-white hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all -skew-x-3">
+                                                                                          <Avatar className="w-8 h-8 border-2 border-ink-black">
+                                                                                                    <AvatarImage src={user?.profile.avatarUrl} />
+                                                                                                    <AvatarFallback className="bg-fighter-red text-white font-bold">
+                                                                                                              {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}
+                                                                                                    </AvatarFallback>
+                                                                                          </Avatar>
+                                                                                          <span style={{ transform: 'skewX(3deg)' }} className="font-bold uppercase text-sm hidden sm:block">
+                                                                                                    {user?.profile.firstName}
+                                                                                          </span>
                                                                                 </div>
-                                                                      </DropdownMenuLabel>
-                                                                      <DropdownMenuSeparator className="bg-white/10" />
-                                                                      <DropdownMenuItem asChild>
-                                                                                <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-                                                                                          <User className="w-4 h-4" />
-                                                                                          <span>Profile</span>
-                                                                                </Link>
-                                                                      </DropdownMenuItem>
-                                                                      <DropdownMenuSeparator className="bg-white/10" />
-                                                                      <DropdownMenuItem
-                                                                                onClick={handleLogout}
-                                                                                className="flex items-center gap-2 cursor-pointer text-red-400 focus:text-red-400"
-                                                                      >
-                                                                                <LogOut className="w-4 h-4" />
-                                                                                <span>Logout</span>
-                                                                      </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                  </DropdownMenu>
+                                                                      </DropdownMenuTrigger>
+                                                                      <DropdownMenuContent align="end" className="w-56 bg-white border-2 border-ink-black p-0">
+                                                                                <DropdownMenuLabel className="p-4 border-b-2 border-ink-black">
+                                                                                          <div className="flex items-center gap-3">
+                                                                                                    <Avatar className="w-10 h-10 border-2 border-ink-black">
+                                                                                                              <AvatarImage src={user?.profile.avatarUrl} />
+                                                                                                              <AvatarFallback className="bg-fighter-red text-white font-bold">
+                                                                                                                        {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}
+                                                                                                              </AvatarFallback>
+                                                                                                    </Avatar>
+                                                                                                    <div>
+                                                                                                              <p className="font-bold">{user?.profile.firstName} {user?.profile.lastName}</p>
+                                                                                                              <p className="text-sm text-gray-500">{user?.profile.email}</p>
+                                                                                                    </div>
+                                                                                          </div>
+                                                                                </DropdownMenuLabel>
+                                                                                <DropdownMenuItem asChild>
+                                                                                          <Link href="/profile" className="flex items-center gap-2 cursor-pointer font-bold uppercase text-sm p-3">
+                                                                                                    <User className="w-4 h-4" />
+                                                                                                    <span>โปรไฟล์</span>
+                                                                                          </Link>
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuSeparator className="bg-ink-black" />
+                                                                                <DropdownMenuItem
+                                                                                          onClick={handleLogout}
+                                                                                          className="flex items-center gap-2 cursor-pointer font-bold uppercase text-sm text-fighter-red focus:text-fighter-red focus:bg-red-50 p-3"
+                                                                                >
+                                                                                          <LogOut className="w-4 h-4" />
+                                                                                          <span>ออกจากระบบ</span>
+                                                                                </DropdownMenuItem>
+                                                                      </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                  </div>
                                         </div>
                               </div>
                     </nav>

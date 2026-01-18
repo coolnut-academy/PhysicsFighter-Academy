@@ -1,42 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Course, COLLECTIONS } from '@/types';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, BookOpen, Eye, Edit } from 'lucide-react';
+import { BookOpen, Plus, Edit, Eye, Trash2, Search, Archive, Rocket, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { Loading } from '@/components/shared/Loading';
 
-export default function MyCoursesPage() {
+export default function AdminCoursesPage() {
           const { user } = useAuthStore();
           const [courses, setCourses] = useState<Course[]>([]);
           const [loading, setLoading] = useState(true);
+          const [searchQuery, setSearchQuery] = useState('');
+          const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
 
           useEffect(() => {
-                    if (user) {
-                              fetchCourses();
-                    }
+                    fetchCourses();
           }, [user]);
 
           const fetchCourses = async () => {
+                    if (!user) return;
+
                     try {
                               setLoading(true);
                               const q = query(
                                         collection(db, COLLECTIONS.COURSES),
-                                        where('ownerId', '==', user?.id),
-                                        orderBy('createdAt', 'desc')
+                                        where('ownerId', '==', user.id)
                               );
-
                               const snapshot = await getDocs(q);
                               const coursesData = snapshot.docs.map((doc) => ({
                                         id: doc.id,
                                         ...doc.data(),
                               })) as Course[];
-
                               setCourses(coursesData);
                     } catch (error) {
                               console.error('Error fetching courses:', error);
@@ -45,53 +43,114 @@ export default function MyCoursesPage() {
                     }
           };
 
+          const filteredCourses = courses.filter((course) => {
+                    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase());
+                    const matchesFilter =
+                              filter === 'all' ||
+                              (filter === 'published' && course.isPublished) ||
+                              (filter === 'draft' && !course.isPublished);
+                    return matchesSearch && matchesFilter;
+          });
+
+          const publishedCount = courses.filter((c) => c.isPublished).length;
+          const draftCount = courses.filter((c) => !c.isPublished).length;
+
           if (loading) {
-                    return <Loading text="Loading your courses..." />;
+                    return (
+                              <div className="flex items-center justify-center h-96">
+                                        <div className="arcade-spinner" />
+                              </div>
+                    );
           }
 
           return (
-                    <div className="space-y-6">
+                    <div className="p-6">
                               {/* Header */}
-                              <div className="flex justify-between items-center">
-                                        <div>
-                                                  <h1 className="text-4xl font-bold text-gradient">My Courses</h1>
-                                                  <p className="text-dark-text-secondary mt-2">
-                                                            Manage and create your course content
-                                                  </p>
+                              <div className="flex items-center justify-between mb-8">
+                                        <div className="flex items-center gap-4">
+                                                  <Link href="/admin/dashboard">
+                                                            <Button variant="outline" size="sm" className="border-black text-black hover:bg-gray-100">
+                                                                      <ArrowLeft className="w-4 h-4" />
+                                                            </Button>
+                                                  </Link>
+                                                  <h1 className="font-heading text-4xl uppercase text-ink-black">
+                                                            คอร์ส<span className="text-fighter-red">ของฉัน</span>
+                                                  </h1>
                                         </div>
                                         <Link href="/admin/courses/create">
-                                                  <Button className="neon-button">
-                                                            <span className="flex items-center gap-2">
+                                                  <Button>
+                                                            <span style={{ transform: 'skewX(6deg)' }} className="flex items-center gap-2">
                                                                       <Plus className="w-4 h-4" />
-                                                                      Create Course
+                                                                      สร้างคอร์สใหม่
                                                             </span>
                                                   </Button>
                                         </Link>
                               </div>
 
-                              {/* Courses Grid */}
-                              {courses.length === 0 ? (
-                                        <Card className="glass-card p-12 text-center">
-                                                  <BookOpen className="w-16 h-16 text-neon-cyan/50 mx-auto mb-4" />
-                                                  <h3 className="text-xl font-bold mb-2">No courses yet</h3>
-                                                  <p className="text-dark-text-secondary mb-6">
-                                                            Start by creating your first course
-                                                  </p>
-                                                  <Link href="/admin/courses/create">
-                                                            <Button className="neon-button">
-                                                                      <span className="flex items-center gap-2">
-                                                                                <Plus className="w-4 h-4" />
-                                                                                Create Your First Course
-                                                                      </span>
-                                                            </Button>
-                                                  </Link>
+                              {/* Stats */}
+                              <div className="grid grid-cols-3 gap-4 mb-6">
+                                        <button
+                                                  onClick={() => setFilter('all')}
+                                                  className={`p-4 border-2 border-ink-black transition-all ${filter === 'all' ? 'bg-ink-black text-white shadow-none' : 'bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'
+                                                            }`}
+                                        >
+                                                  <p className="font-heading text-3xl">{courses.length}</p>
+                                                  <p className="text-sm font-bold uppercase">ทั้งหมด</p>
+                                        </button>
+                                        <button
+                                                  onClick={() => setFilter('published')}
+                                                  className={`p-4 border-2 border-ink-black transition-all ${filter === 'published' ? 'bg-green-500 text-white shadow-none' : 'bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'
+                                                            }`}
+                                        >
+                                                  <p className="font-heading text-3xl text-green-600">{publishedCount}</p>
+                                                  <p className="text-sm font-bold uppercase">เผยแพร่แล้ว</p>
+                                        </button>
+                                        <button
+                                                  onClick={() => setFilter('draft')}
+                                                  className={`p-4 border-2 border-ink-black transition-all ${filter === 'draft' ? 'bg-golden text-ink-black shadow-none' : 'bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'
+                                                            }`}
+                                        >
+                                                  <p className="font-heading text-3xl text-golden">{draftCount}</p>
+                                                  <p className="text-sm font-bold uppercase">แบบร่าง</p>
+                                        </button>
+                              </div>
+
+                              {/* Search */}
+                              <div className="mb-6">
+                                        <div className="relative max-w-md">
+                                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                  <input
+                                                            type="text"
+                                                            value={searchQuery}
+                                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                                            className="arcade-input pl-10"
+                                                            placeholder="ค้นหาคอร์ส..."
+                                                  />
+                                        </div>
+                              </div>
+
+                              {/* Courses List */}
+                              {filteredCourses.length === 0 ? (
+                                        <Card className="text-center py-16">
+                                                  <CardContent>
+                                                            <BookOpen className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                                                            <h3 className="font-heading text-2xl uppercase text-gray-500 mb-4">
+                                                                      {filter === 'draft' ? 'ไม่มีแบบร่าง' : filter === 'published' ? 'ยังไม่เผยแพร่คอร์ส' : 'ยังไม่มีคอร์ส'}
+                                                            </h3>
+                                                            <p className="text-gray-400 mb-6">เริ่มสร้างคอร์สใหม่เลย!</p>
+                                                            <Link href="/admin/courses/create">
+                                                                      <Button>
+                                                                                <span style={{ transform: 'skewX(6deg)' }}>สร้างคอร์สแรกของคุณ</span>
+                                                                      </Button>
+                                                            </Link>
+                                                  </CardContent>
                                         </Card>
                               ) : (
                                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                  {courses.map((course) => (
-                                                            <Card key={course.id} className="glass-card overflow-hidden card-hover">
-                                                                      {/* Course Thumbnail */}
-                                                                      <div className="h-48 bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 relative">
+                                                  {filteredCourses.map((course) => (
+                                                            <Card key={course.id} className="overflow-hidden">
+                                                                      {/* Thumbnail */}
+                                                                      <div className="relative h-40 bg-gray-200 border-b-2 border-ink-black">
                                                                                 {course.thumbnailUrl ? (
                                                                                           <img
                                                                                                     src={course.thumbnailUrl}
@@ -99,80 +158,51 @@ export default function MyCoursesPage() {
                                                                                                     className="w-full h-full object-cover"
                                                                                           />
                                                                                 ) : (
-                                                                                          <div className="flex items-center justify-center h-full">
-                                                                                                    <BookOpen className="w-16 h-16 text-neon-cyan/30" />
+                                                                                          <div className="w-full h-full flex items-center justify-center bg-fighter-red/10">
+                                                                                                    <BookOpen className="w-12 h-12 text-fighter-red/50" />
                                                                                           </div>
                                                                                 )}
-                                                                                {!course.isPublished && (
-                                                                                          <div className="absolute top-2 right-2 px-3 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-500 text-xs font-bold">
-                                                                                                    Draft
-                                                                                          </div>
-                                                                                )}
+                                                                                {/* Status Badge */}
+                                                                                <div className={`absolute top-2 right-2 px-2 py-1 text-xs font-bold uppercase border-2 border-ink-black ${course.isPublished ? 'bg-green-500 text-white' : 'bg-golden text-ink-black'
+                                                                                          }`}>
+                                                                                          {course.isPublished ? (
+                                                                                                    <span className="flex items-center gap-1">
+                                                                                                              <Rocket className="w-3 h-3" /> เผยแพร่
+                                                                                                    </span>
+                                                                                          ) : (
+                                                                                                    <span className="flex items-center gap-1">
+                                                                                                              <Archive className="w-3 h-3" /> แบบร่าง
+                                                                                                    </span>
+                                                                                          )}
+                                                                                </div>
                                                                       </div>
 
-                                                                      {/* Course Info */}
-                                                                      <div className="p-6">
-                                                                                <h3 className="text-xl font-bold mb-2 line-clamp-1">
+                                                                      <CardContent className="p-4">
+                                                                                <h3 className="font-heading text-lg uppercase text-ink-black mb-2 line-clamp-2">
                                                                                           {course.title}
                                                                                 </h3>
-                                                                                <p className="text-sm text-dark-text-secondary line-clamp-2 mb-4">
-                                                                                          {course.description}
-                                                                                </p>
 
-                                                                                {/* Stats */}
-                                                                                <div className="flex gap-4 mb-4 text-sm">
-                                                                                          <div>
-                                                                                                    <p className="text-dark-text-secondary">Modules</p>
-                                                                                                    <p className="font-bold text-neon-cyan">
-                                                                                                              {course.modules?.length || 0}
-                                                                                                    </p>
-                                                                                          </div>
-                                                                                          <div>
-                                                                                                    <p className="text-dark-text-secondary">Lessons</p>
-                                                                                                    <p className="font-bold text-neon-magenta">
-                                                                                                              {course.totalLessons || 0}
-                                                                                                    </p>
-                                                                                          </div>
-                                                                                          <div>
-                                                                                                    <p className="text-dark-text-secondary">Students</p>
-                                                                                                    <p className="font-bold text-neon-purple">
-                                                                                                              {course.activeEnrollments || 0}
-                                                                                                    </p>
-                                                                                          </div>
+                                                                                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                                                                                          <span>{course.modules?.length || 0} โมดูล</span>
+                                                                                          <span>{course.totalLessons || 0} บทเรียน</span>
+                                                                                          <span>{course.activeEnrollments || 0} นักเรียน</span>
                                                                                 </div>
 
-                                                                                {/* Pricing */}
-                                                                                <div className="mb-4">
-                                                                                          <p className="text-xs text-dark-text-secondary mb-1">Pricing</p>
-                                                                                          <div className="flex gap-2 text-xs">
-                                                                                                    <span className="px-2 py-1 rounded bg-neon-cyan/10 text-neon-cyan">
-                                                                                                              3M: ฿{course.pricing?.threeMonths}
-                                                                                                    </span>
-                                                                                                    <span className="px-2 py-1 rounded bg-neon-magenta/10 text-neon-magenta">
-                                                                                                              6M: ฿{course.pricing?.sixMonths}
-                                                                                                    </span>
-                                                                                                    <span className="px-2 py-1 rounded bg-neon-purple/10 text-neon-purple">
-                                                                                                              12M: ฿{course.pricing?.twelveMonths}
-                                                                                                    </span>
-                                                                                          </div>
-                                                                                </div>
-
-                                                                                {/* Actions */}
                                                                                 <div className="flex gap-2">
                                                                                           <Link href={`/admin/courses/${course.id}/edit`} className="flex-1">
-                                                                                                    <Button variant="outline" className="w-full neon-border">
-                                                                                                              <Edit className="w-4 h-4 mr-2" />
-                                                                                                              Edit
+                                                                                                    <Button variant="outline" size="sm" className="w-full border-2 border-ink-black text-ink-black hover:bg-gray-100">
+                                                                                                              <Edit className="w-4 h-4 mr-1" />
+                                                                                                              แก้ไข
                                                                                                     </Button>
                                                                                           </Link>
-                                                                                          <Link href={`/courses/${course.id}`} className="flex-1">
-                                                                                                    <Button variant="outline" className="w-full neon-border">
-                                                                                                              <Eye className="w-4 h-4 mr-2" />
-                                                                                                              View
+                                                                                          <Link href={`/admin/courses/${course.id}/preview`} className="flex-1">
+                                                                                                    <Button variant="outline" size="sm" className="w-full border-2 border-ink-black text-ink-black hover:bg-gray-100">
+                                                                                                              <Eye className="w-4 h-4 mr-1" />
+                                                                                                              ดูตัวอย่าง
                                                                                                     </Button>
                                                                                           </Link>
                                                                                 </div>
-                                                                      </div>
+                                                                      </CardContent>
                                                             </Card>
                                                   ))}
                                         </div>

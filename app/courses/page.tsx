@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/select';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Loading } from '@/components/shared/Loading';
-import { Search, Filter, BookOpen } from 'lucide-react';
+import { Search, Filter, BookOpen, ArrowLeft, Swords } from 'lucide-react';
+import Link from 'next/link';
 
 export default function CoursesPage() {
           const [courses, setCourses] = useState<Course[]>([]);
@@ -38,8 +39,7 @@ export default function CoursesPage() {
                               setLoading(true);
                               const q = query(
                                         collection(db, COLLECTIONS.COURSES),
-                                        where('isPublished', '==', true),
-                                        orderBy('createdAt', 'desc')
+                                        where('isPublished', '==', true)
                               );
 
                               const snapshot = await getDocs(q);
@@ -48,8 +48,15 @@ export default function CoursesPage() {
                                         ...doc.data(),
                               })) as Course[];
 
-                              setCourses(coursesData);
-                              setFilteredCourses(coursesData);
+                              // Client-side sort to avoid index issues
+                              const sortedCourses = coursesData.sort((a, b) => {
+                                        const dateA = a.createdAt?.seconds || 0;
+                                        const dateB = b.createdAt?.seconds || 0;
+                                        return dateB - dateA;
+                              });
+
+                              setCourses(sortedCourses);
+                              setFilteredCourses(sortedCourses);
                     } catch (error) {
                               console.error('Error fetching courses:', error);
                     } finally {
@@ -62,11 +69,12 @@ export default function CoursesPage() {
 
                     // Search filter
                     if (searchQuery) {
+                              const query = searchQuery.toLowerCase();
                               filtered = filtered.filter(
                                         (course) =>
-                                                  course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                                  course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                                  course.category.toLowerCase().includes(searchQuery.toLowerCase())
+                                                  course.title.toLowerCase().includes(query) ||
+                                                  course.description.toLowerCase().includes(query) ||
+                                                  course.category.toLowerCase().includes(query)
                               );
                     }
 
@@ -86,53 +94,71 @@ export default function CoursesPage() {
           const categories = Array.from(new Set(courses.map((c) => c.category).filter(Boolean)));
 
           if (loading) {
-                    return <Loading text="Loading courses..." />;
+                    return (
+                              <div className="flex items-center justify-center min-h-screen bg-paper-pattern">
+                                        <Loading text="LOADING STAGE..." />
+                              </div>
+                    );
           }
 
           return (
-                    <div className="min-h-screen">
+                    <div className="min-h-screen bg-paper-pattern">
+                              {/* Top Bar */}
+                              <div className="bg-ink-black text-white p-4 sticky top-0 z-50 border-b-4 border-fighter-red">
+                                        <div className="container mx-auto flex items-center justify-between">
+                                                  <Link href="/">
+                                                            <Button variant="outline" size="sm" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black uppercase font-bold skew-x-[-10deg]">
+                                                                      <ArrowLeft className="w-4 h-4 mr-2" />
+                                                                      Return to Title
+                                                            </Button>
+                                                  </Link>
+                                                  <div className="font-heading text-xl text-golden tracking-wider">SELECT STAGE</div>
+                                                  <div className="w-[100px]" /> {/* Spacer for centering */}
+                                        </div>
+                              </div>
+
                               {/* Hero Section */}
-                              <div className="relative py-20 overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan/10 via-transparent to-neon-magenta/10" />
-                                        <div className="container mx-auto px-4 relative z-10">
-                                                  <div className="text-center max-w-3xl mx-auto">
-                                                            <h1 className="text-5xl font-bold mb-4">
-                                                                      <span className="text-gradient animate-neon-pulse">Explore Courses</span>
-                                                            </h1>
-                                                            <p className="text-xl text-dark-text-secondary">
-                                                                      Master physics with expert instructors and interactive content
-                                                            </p>
-                                                  </div>
+                              <div className="bg-fighter-red text-white py-16 relative overflow-hidden border-b-4 border-black">
+                                        <div className="absolute inset-0 opacity-10"
+                                                  style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}
+                                        />
+                                        <div className="container mx-auto px-4 relative z-10 text-center">
+                                                  <h1 className="text-5xl md:text-7xl font-heading mb-4 text-white drop-shadow-[4px_4px_0_rgba(0,0,0,1)] uppercase">
+                                                            Training Ground
+                                                  </h1>
+                                                  <p className="text-xl md:text-2xl font-bold uppercase tracking-widest text-yellow-300 drop-shadow-md">
+                                                            Physics Fighter Academy
+                                                  </p>
                                         </div>
                               </div>
 
                               {/* Filters Section */}
-                              <div className="container mx-auto px-4 mb-8">
-                                        <div className="glass-card p-6">
+                              <div className="container mx-auto px-4 -mt-8 mb-12 relative z-20">
+                                        <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_rgba(0,0,0,1)]">
                                                   <div className="flex flex-col md:flex-row gap-4">
                                                             {/* Search */}
                                                             <div className="flex-1 relative">
-                                                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neon-cyan" />
+                                                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                                                       <Input
-                                                                                placeholder="Search courses..."
+                                                                                placeholder="SEARCH MISSION..."
                                                                                 value={searchQuery}
                                                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                                                className="pl-10 bg-dark-bg-secondary border-white/10"
+                                                                                className="pl-10 h-12 bg-gray-50 border-2 border-black font-bold uppercase placeholder:text-gray-400 focus:ring-fighter-red focus:border-fighter-red"
                                                                       />
                                                             </div>
 
                                                             {/* Category Filter */}
                                                             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                                                      <SelectTrigger className="w-full md:w-48 bg-dark-bg-secondary border-white/10">
+                                                                      <SelectTrigger className="w-full md:w-48 h-12 bg-white border-2 border-black font-bold uppercase">
                                                                                 <div className="flex items-center gap-2">
-                                                                                          <Filter className="w-4 h-4 text-neon-magenta" />
+                                                                                          <Filter className="w-4 h-4" />
                                                                                           <SelectValue placeholder="Category" />
                                                                                 </div>
                                                                       </SelectTrigger>
-                                                                      <SelectContent>
-                                                                                <SelectItem value="all">All Categories</SelectItem>
+                                                                      <SelectContent className="border-2 border-black">
+                                                                                <SelectItem value="all" className="font-bold">ALL DISCIPLINES</SelectItem>
                                                                                 {categories.map((cat) => (
-                                                                                          <SelectItem key={cat} value={cat}>
+                                                                                          <SelectItem key={cat} value={cat} className="font-bold uppercase">
                                                                                                     {cat}
                                                                                           </SelectItem>
                                                                                 ))}
@@ -141,14 +167,14 @@ export default function CoursesPage() {
 
                                                             {/* Difficulty Filter */}
                                                             <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                                                                      <SelectTrigger className="w-full md:w-48 bg-dark-bg-secondary border-white/10">
+                                                                      <SelectTrigger className="w-full md:w-48 h-12 bg-white border-2 border-black font-bold uppercase">
                                                                                 <SelectValue placeholder="Difficulty" />
                                                                       </SelectTrigger>
-                                                                      <SelectContent>
-                                                                                <SelectItem value="all">All Levels</SelectItem>
-                                                                                <SelectItem value="beginner">Beginner</SelectItem>
-                                                                                <SelectItem value="intermediate">Intermediate</SelectItem>
-                                                                                <SelectItem value="advanced">Advanced</SelectItem>
+                                                                      <SelectContent className="border-2 border-black">
+                                                                                <SelectItem value="all" className="font-bold">ALL RANKS</SelectItem>
+                                                                                <SelectItem value="beginner" className="font-bold">ROOKIE</SelectItem>
+                                                                                <SelectItem value="intermediate" className="font-bold">WARRIOR</SelectItem>
+                                                                                <SelectItem value="advanced" className="font-bold">MASTER</SelectItem>
                                                                       </SelectContent>
                                                             </Select>
 
@@ -161,7 +187,7 @@ export default function CoursesPage() {
                                                                                           setCategoryFilter('all');
                                                                                           setDifficultyFilter('all');
                                                                                 }}
-                                                                                className="neon-border"
+                                                                                className="h-12 border-2 border-black hover:bg-red-50 text-fighter-red font-bold uppercase"
                                                                       >
                                                                                 Clear
                                                                       </Button>
@@ -169,8 +195,9 @@ export default function CoursesPage() {
                                                   </div>
 
                                                   {/* Results Count */}
-                                                  <div className="mt-4 text-sm text-dark-text-secondary">
-                                                            Showing {filteredCourses.length} of {courses.length} courses
+                                                  <div className="mt-4 flex items-center gap-2 font-bold text-sm uppercase text-gray-500">
+                                                            <Swords className="w-4 h-4" />
+                                                            Found {filteredCourses.length} Stages
                                                   </div>
                                         </div>
                               </div>
@@ -178,15 +205,15 @@ export default function CoursesPage() {
                               {/* Courses Grid */}
                               <div className="container mx-auto px-4 pb-20">
                                         {filteredCourses.length === 0 ? (
-                                                  <div className="glass-card p-12 text-center">
-                                                            <BookOpen className="w-16 h-16 text-neon-cyan/50 mx-auto mb-4" />
-                                                            <h3 className="text-xl font-bold mb-2">No courses found</h3>
-                                                            <p className="text-dark-text-secondary">
-                                                                      Try adjusting your filters or check back later for new courses
+                                                  <div className="bg-white border-4 border-black p-12 text-center shadow-[8px_8px_0_rgba(0,0,0,0.2)]">
+                                                            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                                            <h3 className="text-2xl font-heading mb-2 uppercase">No Stages Found</h3>
+                                                            <p className="text-gray-500 font-bold">
+                                                                      Adjust your search parameters into the computer system.
                                                             </p>
                                                   </div>
                                         ) : (
-                                                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                                                             {filteredCourses.map((course) => (
                                                                       <CourseCard key={course.id} course={course} />
                                                             ))}

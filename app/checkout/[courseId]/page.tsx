@@ -230,12 +230,12 @@ export default function CheckoutPage() {
           }
 
           return (
-                    <div className="min-h-screen py-12">
+                    <div className="min-h-screen py-12 bg-ink-black text-white">
                               <div className="container mx-auto px-4 max-w-4xl">
                                         {/* Header */}
                                         <div className="flex items-center gap-4 mb-8">
                                                   <Link href={`/courses/${courseId}`}>
-                                                            <Button variant="outline" size="icon" className="neon-border">
+                                                            <Button variant="outline" size="icon" className="bg-transparent neon-border border-2 border-white text-white hover:bg-white hover:text-black">
                                                                       <ArrowLeft className="w-4 h-4" />
                                                             </Button>
                                                   </Link>
@@ -518,7 +518,7 @@ function PaymentStep({
                               </div>
 
                               <div className="flex gap-4 mt-8">
-                                        <Button variant="outline" onClick={onBack} className="flex-1 neon-border">
+                                        <Button variant="outline" onClick={onBack} className="flex-1 bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
                                                   <ArrowLeft className="w-4 h-4 mr-2" />
                                                   Back
                                         </Button>
@@ -652,7 +652,7 @@ function ConfirmationStep({
                               </div>
 
                               <div className="flex gap-4 mt-8">
-                                        <Button variant="outline" onClick={onBack} className="flex-1 neon-border">
+                                        <Button variant="outline" onClick={onBack} className="flex-1 bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
                                                   <ArrowLeft className="w-4 h-4 mr-2" />
                                                   Back
                                         </Button>

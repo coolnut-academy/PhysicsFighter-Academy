@@ -6,9 +6,7 @@ import { doc, getDoc, query, collection, where, getDocs, updateDoc, arrayUnion, 
 import { db } from '@/lib/firebase/config';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Course, Enrollment, COLLECTIONS, CourseLesson } from '@/types';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
           ArrowLeft,
@@ -17,11 +15,15 @@ import {
           Lock,
           BookOpen,
           Clock,
-          AlertCircle,
+          Download,
+          FileText,
+          Shield,
+          Trophy,
+          Swords
 } from 'lucide-react';
 import Link from 'next/link';
 import { Loading } from '@/components/shared/Loading';
-import { calculateTimeRemaining } from '@/lib/utils';
+import { calculateTimeRemaining, getYouTubeEmbedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function CoursePlayerPage() {
@@ -47,7 +49,39 @@ export default function CoursePlayerPage() {
                     try {
                               setLoading(true);
 
-                              // Check if student is enrolled
+                              // 1. Check if user is Super Admin -> Auto Authorize
+                              if (user?.role === 'super_admin') {
+                                        setAuthorized(true);
+                                        // Load course data
+                                        const courseDoc = await getDoc(doc(db, COLLECTIONS.COURSES, courseId));
+                                        if (!courseDoc.exists()) {
+                                                  router.push('/learn/dashboard');
+                                                  return;
+                                        }
+                                        const courseData = { id: courseDoc.id, ...courseDoc.data() } as Course;
+                                        setCourse(courseData);
+
+                                        // Create fake enrollment for UI purposes
+                                        setEnrollment({
+                                                  id: 'admin_preview',
+                                                  studentId: user.id,
+                                                  courseId: courseId,
+                                                  enrolledAt: Timestamp.now(),
+                                                  expiresAt: null, // No expiry
+                                                  progress: [],
+                                                  status: 'active',
+                                                  overallProgress: 0,
+                                                  lastAccessedAt: Timestamp.now()
+                                        } as unknown as Enrollment);
+
+                                        if (courseData.modules.length > 0 && courseData.modules[0].lessons.length > 0) {
+                                                  setCurrentLesson(courseData.modules[0].lessons[0]);
+                                        }
+                                        setLoading(false);
+                                        return;
+                              }
+
+                              // 2. Regular Student Check
                               const enrollmentQuery = query(
                                         collection(db, COLLECTIONS.ENROLLMENTS),
                                         where('studentId', '==', user?.id),
@@ -58,8 +92,8 @@ export default function CoursePlayerPage() {
 
                               if (enrollmentSnapshot.empty) {
                                         toast({
-                                                  title: 'Access Denied',
-                                                  description: 'You are not enrolled in this course',
+                                                  title: 'ACCESS DENIED',
+                                                  description: 'You are not validly enrolled in this mission.',
                                                   variant: 'destructive',
                                         });
                                         router.push('/courses');
@@ -71,12 +105,12 @@ export default function CoursePlayerPage() {
                                         ...enrollmentSnapshot.docs[0].data(),
                               } as Enrollment;
 
-                              // Check if enrollment is active and not expired
+                              // Check expiry
                               const timeRemaining = calculateTimeRemaining(enrollmentData);
                               if (timeRemaining.expired) {
                                         toast({
-                                                  title: 'Access Expired',
-                                                  description: 'Your access to this course has expired',
+                                                  title: 'ACCESS EXPIRED',
+                                                  description: 'Mission time limit exceeded.',
                                                   variant: 'destructive',
                                         });
                                         router.push('/learn/dashboard');
@@ -85,8 +119,8 @@ export default function CoursePlayerPage() {
 
                               if (enrollmentData.status !== 'active') {
                                         toast({
-                                                  title: 'Access Denied',
-                                                  description: 'Your enrollment is not active',
+                                                  title: 'ACCOUNT LOCKED',
+                                                  description: 'Your enrollment is inactive.',
                                                   variant: 'destructive',
                                         });
                                         router.push('/learn/dashboard');
@@ -106,15 +140,15 @@ export default function CoursePlayerPage() {
                               const courseData = { id: courseDoc.id, ...courseDoc.data() } as Course;
                               setCourse(courseData);
 
-                              // Set first lesson as current if none selected
+                              // Set first lesson
                               if (courseData.modules.length > 0 && courseData.modules[0].lessons.length > 0) {
                                         setCurrentLesson(courseData.modules[0].lessons[0]);
                               }
                     } catch (error) {
                               console.error('Error checking enrollment:', error);
                               toast({
-                                        title: 'Error',
-                                        description: 'Failed to load course',
+                                        title: 'SYSTEM ERROR',
+                                        description: 'Failed to load mission data.',
                                         variant: 'destructive',
                               });
                     } finally {
@@ -123,7 +157,7 @@ export default function CoursePlayerPage() {
           };
 
           const markLessonComplete = async (lessonId: string) => {
-                    if (!enrollment) return;
+                    if (!enrollment || enrollment.id === 'admin_preview') return;
 
                     try {
                               const isCompleted = enrollment.progress?.some(
@@ -145,8 +179,8 @@ export default function CoursePlayerPage() {
                                         setEnrollment({ id: updatedDoc.id, ...updatedDoc.data() } as Enrollment);
 
                                         toast({
-                                                  title: 'Progress Saved',
-                                                  description: 'Lesson marked as complete',
+                                                  title: 'MISSION ACCOMPLISHED',
+                                                  description: 'Lesson marked as complete.',
                                         });
                               }
                     } catch (error) {
@@ -159,7 +193,11 @@ export default function CoursePlayerPage() {
           };
 
           if (loading) {
-                    return <Loading text="Loading course..." />;
+                    return (
+                              <div className="flex items-center justify-center min-h-screen bg-paper-pattern">
+                                        <Loading text="LOADING BATTLE PLAN..." />
+                              </div>
+                    );
           }
 
           if (!authorized || !course || !enrollment) {
@@ -169,193 +207,218 @@ export default function CoursePlayerPage() {
           const timeRemaining = calculateTimeRemaining(enrollment);
 
           return (
-                    <div className="min-h-screen flex flex-col">
+                    <div className="min-h-screen flex flex-col bg-paper-pattern">
                               {/* Header */}
-                              <div className="border-b border-white/10 bg-dark-bg-secondary/50 backdrop-blur-sm sticky top-0 z-10">
-                                        <div className="container mx-auto px-4 py-4">
-                                                  <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-4">
-                                                                      <Link href="/learn/dashboard">
-                                                                                <Button variant="outline" size="icon" className="neon-border">
-                                                                                          <ArrowLeft className="w-4 h-4" />
-                                                                                </Button>
-                                                                      </Link>
-                                                                      <div>
-                                                                                <h1 className="text-xl font-bold line-clamp-1">{course.title}</h1>
-                                                                                <p className="text-sm text-dark-text-secondary">
-                                                                                          {Math.round(enrollment.overallProgress || 0)}% Complete
-                                                                                </p>
+                              <div className="bg-ink-black text-white p-4 sticky top-0 z-50 border-b-4 border-fighter-red shadow-md">
+                                        <div className="container mx-auto flex items-center justify-between">
+                                                  <div className="flex items-center gap-4">
+                                                            <Link href="/learn/dashboard">
+                                                                      <Button variant="outline" size="sm" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black uppercase font-bold skew-x-[-10deg]">
+                                                                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                                                                Exit
+                                                                      </Button>
+                                                            </Link>
+                                                            <div>
+                                                                      <h1 className="text-xl font-heading text-white line-clamp-1">{course.title}</h1>
+                                                                      <div className="flex items-center gap-2">
+                                                                                <Progress value={enrollment.overallProgress || 0} className="w-32 h-2 bg-gray-700" indicatorClassName="bg-green-500" />
+                                                                                <span className="text-xs font-bold text-gray-400">{Math.round(enrollment.overallProgress || 0)}%</span>
                                                                       </div>
-                                                            </div>
-
-                                                            {/* Time Remaining */}
-                                                            <div className="flex items-center gap-4">
-                                                                      <div className="text-right">
-                                                                                <p className="text-sm text-dark-text-secondary">Access expires in</p>
-                                                                                <p className="font-bold text-neon-cyan">
-                                                                                          {timeRemaining.days}d {timeRemaining.hours}h
-                                                                                </p>
-                                                                      </div>
-                                                                      <Progress value={timeRemaining.percentage} className="w-32" />
                                                             </div>
                                                   </div>
+
+                                                  {/* Time Remaining */}
+                                                  {enrollment.id !== 'admin_preview' && (
+                                                            <div className="flex items-center gap-4 text-xs font-bold uppercase text-gray-400">
+                                                                      <div className="text-right">
+                                                                                <p>Time Remaining</p>
+                                                                                <p className={`text-lg leading-none ${timeRemaining.days < 7 ? 'text-fighter-red animate-pulse' : 'text-golden'}`}>
+                                                                                          {timeRemaining.days}D {timeRemaining.hours}H
+                                                                                </p>
+                                                                      </div>
+                                                            </div>
+                                                  )}
+
+                                                  {enrollment.id === 'admin_preview' && (
+                                                            <div className="px-3 py-1 bg-golden text-ink-black border border-white font-bold text-xs uppercase animate-pulse">
+                                                                      SUPER ADMIN PREVIEW
+                                                            </div>
+                                                  )}
                                         </div>
                               </div>
 
                               {/* Main Content */}
-                              <div className="flex-1 flex">
+                              <div className="flex-1 flex overflow-hidden">
                                         {/* Sidebar - Lessons */}
-                                        <aside className="w-80 border-r border-white/10 bg-dark-bg-secondary/30 overflow-y-auto">
-                                                  <div className="p-4">
-                                                            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                                                      <BookOpen className="w-5 h-5 text-neon-cyan" />
-                                                                      Course Content
+                                        <aside className="w-80 bg-white border-r-4 border-black overflow-y-auto hidden md:block z-40">
+                                                  <div className="p-4 bg-fighter-red text-white border-b-4 border-black mb-4">
+                                                            <h2 className="font-heading uppercase text-lg flex items-center gap-2">
+                                                                      <BookOpen className="w-5 h-5" />
+                                                                      Mission Log
                                                             </h2>
+                                                  </div>
 
-                                                            <div className="space-y-4">
-                                                                      {course.modules.map((module, moduleIndex) => (
-                                                                                <div key={module.id}>
-                                                                                          <h3 className="font-bold mb-2 text-sm text-neon-magenta">
-                                                                                                    {moduleIndex + 1}. {module.title}
-                                                                                          </h3>
-                                                                                          <div className="space-y-1">
-                                                                                                    {module.lessons.map((lesson, lessonIndex) => {
-                                                                                                              const completed = isLessonCompleted(lesson.id);
-                                                                                                              const isCurrent = currentLesson?.id === lesson.id;
+                                                  <div className="px-2 pb-8 space-y-6">
+                                                            {course.modules.map((module, moduleIndex) => (
+                                                                      <div key={module.id} className="space-y-2">
+                                                                                <h3 className="font-bold text-xs uppercase text-gray-500 px-2 flex items-center gap-2">
+                                                                                          <span className="bg-black text-white w-5 h-5 flex items-center justify-center rounded-sm text-[10px]">{moduleIndex + 1}</span>
+                                                                                          {module.title}
+                                                                                </h3>
+                                                                                <div className="space-y-1">
+                                                                                          {module.lessons.map((lesson, lessonIndex) => {
+                                                                                                    const completed = isLessonCompleted(lesson.id);
+                                                                                                    const isCurrent = currentLesson?.id === lesson.id;
 
-                                                                                                              return (
-                                                                                                                        <button
-                                                                                                                                  key={lesson.id}
-                                                                                                                                  onClick={() => {
-                                                                                                                                            setCurrentLesson(lesson);
-                                                                                                                                            if (completed) {
-                                                                                                                                                      // Allow re-watching
-                                                                                                                                            }
-                                                                                                                                  }}
-                                                                                                                                  className={`w-full text-left p-3 rounded-lg transition-all ${isCurrent
-                                                                                                                                            ? 'bg-neon-cyan/20 border border-neon-cyan/30'
-                                                                                                                                            : 'hover:bg-white/5'
-                                                                                                                                            }`}
-                                                                                                                        >
-                                                                                                                                  <div className="flex items-start gap-3">
-                                                                                                                                            <div className="flex-shrink-0 mt-0.5">
-                                                                                                                                                      {completed ? (
-                                                                                                                                                                <CheckCircle className="w-5 h-5 text-neon-cyan" />
-                                                                                                                                                      ) : isCurrent ? (
-                                                                                                                                                                <Play className="w-5 h-5 text-neon-magenta" />
-                                                                                                                                                      ) : (
-                                                                                                                                                                <div className="w-5 h-5 rounded-full border-2 border-white/20" />
-                                                                                                                                                      )}
-                                                                                                                                            </div>
-                                                                                                                                            <div className="flex-1 min-w-0">
-                                                                                                                                                      <p
-                                                                                                                                                                className={`text-sm font-medium line-clamp-2 ${isCurrent ? 'text-neon-cyan' : ''
-                                                                                                                                                                          }`}
-                                                                                                                                                      >
-                                                                                                                                                                {lessonIndex + 1}. {lesson.title}
-                                                                                                                                                      </p>
-                                                                                                                                                      <div className="flex items-center gap-2 mt-1">
-                                                                                                                                                                <Clock className="w-3 h-3 text-dark-text-muted" />
-                                                                                                                                                                <span className="text-xs text-dark-text-muted">
-                                                                                                                                                                          {lesson.durationMinutes} min
-                                                                                                                                                                </span>
-                                                                                                                                                      </div>
-                                                                                                                                            </div>
+                                                                                                    return (
+                                                                                                              <button
+                                                                                                                        key={lesson.id}
+                                                                                                                        onClick={() => setCurrentLesson(lesson)}
+                                                                                                                        className={`w-full text-left p-2 rounded-lg border-2 transition-all flex items-start gap-3 group relative overflow-hidden ${isCurrent
+                                                                                                                                  ? 'bg-yellow-50 border-black shadow-[4px_4px_0_rgba(0,0,0,1)] -translate-y-1'
+                                                                                                                                  : 'bg-white border-transparent hover:border-gray-200 hover:bg-gray-50'
+                                                                                                                                  }`}
+                                                                                                              >
+                                                                                                                        <div className="flex-shrink-0 mt-0.5 relative z-10">
+                                                                                                                                  {completed ? (
+                                                                                                                                            <CheckCircle className="w-5 h-5 text-green-500 fill-green-100" />
+                                                                                                                                  ) : isCurrent ? (
+                                                                                                                                            <Play className="w-5 h-5 text-fighter-red fill-current" />
+                                                                                                                                  ) : (
+                                                                                                                                            <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                                                                                                                                  )}
+                                                                                                                        </div>
+                                                                                                                        <div className="flex-1 min-w-0 relative z-10">
+                                                                                                                                  <p className={`text-sm font-bold line-clamp-2 ${isCurrent ? 'text-ink-black' : 'text-gray-600'}`}>
+                                                                                                                                            {lessonIndex + 1}. {lesson.title}
+                                                                                                                                  </p>
+                                                                                                                                  <div className="flex items-center gap-2 mt-1">
+                                                                                                                                            <span className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1">
+                                                                                                                                                      <Clock className="w-3 h-3" />
+                                                                                                                                                      {lesson.durationMinutes} min
+                                                                                                                                            </span>
                                                                                                                                   </div>
-                                                                                                                        </button>
-                                                                                                              );
-                                                                                                    })}
-                                                                                          </div>
+                                                                                                                        </div>
+                                                                                                              </button>
+                                                                                                    );
+                                                                                          })}
                                                                                 </div>
-                                                                      ))}
-                                                            </div>
+                                                                      </div>
+                                                            ))}
                                                   </div>
                                         </aside>
 
                                         {/* Content Area */}
-                                        <main className="flex-1 overflow-y-auto">
-                                                  <div className="container mx-auto px-6 py-8 max-w-5xl">
+                                        <main className="flex-1 overflow-y-auto bg-paper-pattern p-4 md:p-8">
+                                                  <div className="max-w-4xl mx-auto space-y-8">
                                                             {currentLesson ? (
-                                                                      <div className="space-y-6">
+                                                                      <>
                                                                                 {/* Lesson Header */}
-                                                                                <div>
-                                                                                          <div className="flex items-center justify-between mb-4">
-                                                                                                    <h2 className="text-3xl font-bold text-gradient">
+                                                                                <div className="border-b-4 border-black pb-4">
+                                                                                          <div className="flex items-center justify-between mb-2">
+                                                                                                    <h2 className="text-3xl md:text-4xl font-heading text-ink-black uppercase">
                                                                                                               {currentLesson.title}
                                                                                                     </h2>
                                                                                                     {isLessonCompleted(currentLesson.id) && (
-                                                                                                              <Badge className="bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30">
-                                                                                                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                                                                                              <div className="px-3 py-1 bg-green-500 text-white font-bold text-xs uppercase -skew-x-12 border-2 border-black shadow-[2px_2px_0_rgba(0,0,0,1)]">
                                                                                                                         Completed
-                                                                                                              </Badge>
+                                                                                                              </div>
                                                                                                     )}
                                                                                           </div>
                                                                                           {currentLesson.description && (
-                                                                                                    <p className="text-dark-text-secondary">{currentLesson.description}</p>
+                                                                                                    <p className="text-gray-600 font-medium">{currentLesson.description}</p>
                                                                                           )}
                                                                                 </div>
 
                                                                                 {/* Video Player */}
                                                                                 {currentLesson.videoUrl && (
-                                                                                          <Card className="glass-card p-0 overflow-hidden">
-                                                                                                    <div className="relative" style={{ paddingBottom: '56.25%' }}>
-                                                                                                              <iframe
-                                                                                                                        src={currentLesson.videoUrl.replace('watch?v=', 'embed/')}
-                                                                                                                        title={currentLesson.title}
-                                                                                                                        className="absolute inset-0 w-full h-full"
-                                                                                                                        allowFullScreen
-                                                                                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                                                                              />
+                                                                                          <div className="bg-black p-2 border-4 border-black shadow-[8px_8px_0_rgba(0,0,0,1)]">
+                                                                                                    <div className="relative aspect-video w-full bg-black">
+                                                                                                              {getYouTubeEmbedUrl(currentLesson.videoUrl) ? (
+                                                                                                                        <iframe
+                                                                                                                                  src={getYouTubeEmbedUrl(currentLesson.videoUrl)!}
+                                                                                                                                  title={currentLesson.title}
+                                                                                                                                  className="absolute inset-0 w-full h-full"
+                                                                                                                                  allowFullScreen
+                                                                                                                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                                                                        />
+                                                                                                              ) : (
+                                                                                                                        <div className="flex items-center justify-center w-full h-full text-white font-mono">
+                                                                                                                                  INVALID VIDEO FEED
+                                                                                                                        </div>
+                                                                                                              )}
                                                                                                     </div>
-                                                                                          </Card>
+                                                                                          </div>
                                                                                 )}
 
-                                                                                {/* Lesson Resources */}
-                                                                                {currentLesson.resources && currentLesson.resources.length > 0 && (
-                                                                                          <Card className="glass-card p-6">
-                                                                                                    <h3 className="text-xl font-bold text-neon-purple mb-4">
-                                                                                                              Lesson Resources
+                                                                                {/* Controls & Resources */}
+                                                                                <div className="grid md:grid-cols-2 gap-8">
+                                                                                          {/* Mark Complete */}
+                                                                                          <div className="bg-white border-4 border-black p-6 shadow-[4px_4px_0_rgba(0,0,0,1)] flex flex-col items-center justify-center text-center space-y-4">
+                                                                                                    <Trophy className="w-12 h-12 text-golden" />
+                                                                                                    <div>
+                                                                                                              <h3 className="font-heading text-lg uppercase">Mission Status</h3>
+                                                                                                              <p className="text-sm text-gray-500">
+                                                                                                                        {isLessonCompleted(currentLesson.id)
+                                                                                                                                  ? 'Objective completed. Great work, fighter!'
+                                                                                                                                  : 'Mark objective as complete to advance.'}
+                                                                                                              </p>
+                                                                                                    </div>
+                                                                                                    {!isLessonCompleted(currentLesson.id) ? (
+                                                                                                              <Button
+                                                                                                                        onClick={() => markLessonComplete(currentLesson.id)}
+                                                                                                                        className="bg-fighter-red text-white border-2 border-black uppercase font-bold hover:bg-red-700 shadow-[4px_4px_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all w-full md:w-auto"
+                                                                                                              >
+                                                                                                                        Complete Mission
+                                                                                                              </Button>
+                                                                                                    ) : (
+                                                                                                              <Button disabled className="bg-gray-100 text-gray-400 border-2 border-gray-200 uppercase font-bold cursor-not-allowed">
+                                                                                                                        Already Completed
+                                                                                                              </Button>
+                                                                                                    )}
+                                                                                          </div>
+
+                                                                                          {/* Resources */}
+                                                                                          <div className="bg-white border-4 border-black p-6 shadow-[4px_4px_0_rgba(0,0,0,1)]">
+                                                                                                    <h3 className="font-heading text-lg uppercase mb-4 flex items-center gap-2">
+                                                                                                              <Download className="w-5 h-5" />
+                                                                                                              Supply Drop (Resources)
                                                                                                     </h3>
                                                                                                     <div className="space-y-3">
-                                                                                                              {currentLesson.resources.map((resource, index) => (
-                                                                                                                        <a
-                                                                                                                                  key={index}
-                                                                                                                                  href={resource.url}
-                                                                                                                                  target="_blank"
-                                                                                                                                  rel="noopener noreferrer"
-                                                                                                                                  className="block p-4 rounded-lg border border-white/10 hover:border-neon-purple/50 hover:bg-neon-purple/5 transition-all"
-                                                                                                                        >
-                                                                                                                                  <p className="font-medium">{resource.title}</p>
-                                                                                                                                  {resource.description && (
-                                                                                                                                            <p className="text-sm text-dark-text-secondary mt-1">
-                                                                                                                                                      {resource.description}
-                                                                                                                                            </p>
-                                                                                                                                  )}
-                                                                                                                        </a>
-                                                                                                              ))}
+                                                                                                              {currentLesson.resources && currentLesson.resources.length > 0 ? (
+                                                                                                                        currentLesson.resources.map((resource, index) => (
+                                                                                                                                  <div key={index} className="flex items-center justify-between p-3 border-2 border-gray-200 hover:border-black transition-colors bg-gray-50 group">
+                                                                                                                                            <div className="flex items-center gap-3">
+                                                                                                                                                      <FileText className="w-5 h-5 text-gray-400 group-hover:text-fighter-red" />
+                                                                                                                                                      <div>
+                                                                                                                                                                <p className="font-bold text-sm text-ink-black">{resource.title}</p>
+                                                                                                                                                                <p className="text-xs text-gray-500">{resource.type || 'Link'}</p>
+                                                                                                                                                      </div>
+                                                                                                                                            </div>
+                                                                                                                                            <a
+                                                                                                                                                      href={resource.url}
+                                                                                                                                                      target="_blank"
+                                                                                                                                                      rel="noopener noreferrer"
+                                                                                                                                            >
+                                                                                                                                                      <Button size="sm" variant="ghost" className="text-fighter-red hover:bg-red-50 font-bold uppercase text-xs">
+                                                                                                                                                                Download
+                                                                                                                                                      </Button>
+                                                                                                                                            </a>
+                                                                                                                                  </div>
+                                                                                                                        ))
+                                                                                                              ) : (
+                                                                                                                        <p className="text-gray-400 italic text-sm text-center py-4">No supplies available for this mission.</p>
+                                                                                                              )}
                                                                                                     </div>
-                                                                                          </Card>
-                                                                                )}
-
-                                                                                {/* Mark Complete Button */}
-                                                                                {!isLessonCompleted(currentLesson.id) && (
-                                                                                          <Button
-                                                                                                    onClick={() => markLessonComplete(currentLesson.id)}
-                                                                                                    className="w-full neon-button"
-                                                                                          >
-                                                                                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                                                                                    Mark as Complete
-                                                                                          </Button>
-                                                                                )}
-                                                                      </div>
+                                                                                          </div>
+                                                                                </div>
+                                                                      </>
                                                             ) : (
-                                                                      <Card className="glass-card p-12 text-center">
-                                                                                <BookOpen className="w-16 h-16 text-neon-cyan/50 mx-auto mb-4" />
-                                                                                <h3 className="text-xl font-bold mb-2">Select a lesson to start</h3>
-                                                                                <p className="text-dark-text-secondary">
-                                                                                          Choose a lesson from the sidebar to begin learning
-                                                                                </p>
-                                                                      </Card>
+                                                                      <div className="flex flex-col items-center justify-center p-12 text-center border-4 border-dashed border-gray-300 rounded-lg">
+                                                                                <Swords className="w-16 h-16 text-gray-300 mb-4" />
+                                                                                <h3 className="text-2xl font-heading text-gray-400 uppercase">Select a Mission</h3>
+                                                                                <p className="text-gray-500 font-bold">Choose a lesson from the mission log to begin.</p>
+                                                                      </div>
                                                             )}
                                                   </div>
                                         </main>
