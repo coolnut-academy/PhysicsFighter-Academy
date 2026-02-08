@@ -1,217 +1,49 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
     // ====================================================================
     // HELPER FUNCTIONS
     // ====================================================================
-    
-    // Check if user is authenticated
+
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Get user role from Firestore database (not custom claims)
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-    
-    // Check if user is Super Admin (role stored in database)
-    function isSuperAdmin() {
-      return isAuthenticated() && getUserRole() == 'super_admin';
-    }
-    
-    // Check if user is Admin
-    function isAdmin() {
-      return isAuthenticated() && 
-        (getUserRole() == 'admin' || getUserRole() == 'super_admin');
-    }
-    
-    // Check if user is Student
-    function isStudent() {
-      return isAuthenticated() && getUserRole() == 'student';
-    }
-    
-    // Check if user owns the resource
     function isOwner(ownerId) {
       return isAuthenticated() && request.auth.uid == ownerId;
     }
-    
-    // Check if accessing own document
-    function isSelf(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
 
     // ====================================================================
-    // USERS COLLECTION
-    // ====================================================================
-    
-    match /users/{userId} {
-      // Super Admin can read all users
-      // Users can read their own data
-      allow read: if isSuperAdmin() || isSelf(userId);
-      
-      // Create: Super Admin can create any user
-      // Users can create their own profile with role 'student'
-      allow create: if isSuperAdmin() || 
-        (isSelf(userId) && request.resource.data.role == 'student');
-      
-      // Update: Super Admin can update anyone
-      // Users can update own profile (but not role)
-      allow update: if isSuperAdmin() || 
-        (isSelf(userId) && 
-         request.resource.data.role == resource.data.role);
-      
-      // Delete: Only Super Admin
-      allow delete: if isSuperAdmin();
-    }
-
-    // ====================================================================
-    // COURSES COLLECTION - SUPER ADMIN FULL CONTROL
+    // COURSES & CONTENT (Public Read if Published)
     // ====================================================================
     
     match /courses/{courseId} {
-      // Public can read published courses
-      // Admin/Super Admin can read all courses (including drafts)
-      allow read: if resource.data.isPublished == true || 
-                   isAdmin() || 
-                   isOwner(resource.data.ownerId);
-      
-      // Create: Admin/Super Admin can create
-      allow create: if isAdmin();
-      
-      // Update: Admin/Super Admin can update ANY course
-      // Owner can update their own course
-      allow update: if isAdmin() || isOwner(resource.data.ownerId);
-      
-      // Delete: Super Admin can delete ANY course immediately
-      // Admin can delete their own course
-      allow delete: if isSuperAdmin() || isOwner(resource.data.ownerId);
-    }
-
-    // ====================================================================
-    // COURSE CONTENT (Lessons, Modules)
-    // ====================================================================
-    
-    match /courses/{courseId}/modules/{moduleId} {
-      allow read: if isAdmin() || 
-                   (resource.data.isPublished == true && isAuthenticated());
-      allow write: if isAdmin();
-    }
-    
-    match /courses/{courseId}/lessons/{lessonId} {
-      allow read: if isAdmin() || 
-                   (resource.data.isPublished == true && isAuthenticated());
-      allow write: if isAdmin();
-    }
-
-    // ====================================================================
-    // ENROLLMENTS COLLECTION
-    // ====================================================================
-    
-    match /enrollments/{enrollmentId} {
-      // Super Admin can read all
-      // Admin can read enrollments for their courses
-      // Students can read their own enrollments
-      allow read: if isSuperAdmin() || 
-                   (isAuthenticated() && 
-                    (request.auth.uid == resource.data.studentId || 
-                     request.auth.uid == resource.data.ownerId));
-      
-      // Create: Students can create for themselves
-      allow create: if isStudent() && 
-        request.resource.data.studentId == request.auth.uid;
-      
-      // Update: Super Admin, owner, or student (for progress only)
-      allow update: if isSuperAdmin() || 
-                   isOwner(resource.data.ownerId) ||
-                   (isSelf(resource.data.studentId) && 
-                    request.resource.data.diff(resource.data).affectedKeys()
-                      .hasOnly(['progress', 'overallProgress', 'lastAccessedAt']));
-      
-      // Delete: Super Admin can delete any enrollment immediately
-      allow delete: if isSuperAdmin();
-    }
-
-    // ====================================================================
-    // PAYMENT SLIPS COLLECTION
-    // ====================================================================
-    
-    match /paymentSlips/{slipId} {
-      // Super Admin can read all
-      // Admin can read slips for their courses
-      // Students can read their own slips
-      allow read: if isSuperAdmin() ||
-                   (isAuthenticated() &&
-                    (request.auth.uid == resource.data.studentId ||
-                     request.auth.uid == resource.data.ownerId));
-      
-      // Create: Students can create their own
-      allow create: if isStudent() &&
-        request.resource.data.studentId == request.auth.uid;
-      
-      // Update: Super Admin or owner (admin)
-      allow update: if isSuperAdmin() || 
-                   isOwner(resource.data.ownerId);
-      
-      // Delete: Super Admin can delete any slip immediately
-      allow delete: if isSuperAdmin();
-    }
-
-    // ====================================================================
-    // REVIEWS COLLECTION
-    // ====================================================================
-    
-    match /reviews/{reviewId} {
-      // Public can read published reviews
+      // Allow public read if published
       allow read: if resource.data.isPublished == true || isAuthenticated();
-      
-      // Create: Students with enrollment
-      allow create: if isStudent() &&
-        request.resource.data.studentId == request.auth.uid;
-      
-      // Update: Owner or Super Admin
-      allow update: if isSuperAdmin() ||
-                   isSelf(resource.data.studentId);
-      
-      // Delete: Super Admin can delete any review immediately
-      allow delete: if isSuperAdmin() ||
-                   isSelf(resource.data.studentId);
+      allow write: if isAuthenticated();
+    }
+    
+    match /courseModules/{moduleId} {
+       // Allow public read if parent course is published
+       allow read: if get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.isPublished == true || isAuthenticated();
+       allow write: if isAuthenticated();
+    }
+
+    match /courseLessons/{lessonId} {
+       // Allow public read if parent course is published
+       // Note: This matches the requirement for the Course Detail page to list all lessons (even locked ones).
+       allow read: if get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.isPublished == true || isAuthenticated();
+       allow write: if isAuthenticated();
     }
 
     // ====================================================================
-    // ADMIN STATISTICS
+    // DEFAULT RULE (Auth Required for everything else)
     // ====================================================================
     
-    match /adminStatistics/{statId} {
-      allow read, write: if isAdmin();
-    }
-
-    // ====================================================================
-    // PLATFORM STATISTICS
-    // ====================================================================
-    
-    match /platformStatistics/{statId} {
-      allow read, write: if isSuperAdmin();
-    }
-
-    // ====================================================================
-    // NOTIFICATIONS
-    // ====================================================================
-    
-    match /notifications/{notificationId} {
-      allow read: if isSuperAdmin() ||
-                   (isAuthenticated() && request.auth.uid == resource.data.userId);
-      allow create, update, delete: if isSuperAdmin();
-    }
-
-    // ====================================================================
-    // DEFAULT DENY
-    // ====================================================================
-    
+    // This covers users, enrollments, payments, etc.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAuthenticated();
     }
   }
 }

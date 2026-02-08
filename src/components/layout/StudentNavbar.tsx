@@ -20,7 +20,7 @@ import { getInitials } from '@/lib/utils';
 const navItems = [
           { href: '/dashboard', label: 'หน้าหลัก', icon: GraduationCap },
           { href: '/courses', label: 'ค้นหาคอร์ส', icon: BookOpen },
-          { href: '/my-courses', label: 'คอร์สของฉัน', icon: Trophy },
+          { href: '/my-enrollments', label: 'คอร์สของฉัน', icon: Trophy },
 ];
 
 export function StudentNavbar() {

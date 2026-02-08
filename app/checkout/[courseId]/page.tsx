@@ -6,7 +6,7 @@ import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/fires
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase/config';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Course, User, COLLECTIONS, DurationMonths, PaymentStatus } from '@/types';
+import { Course, User, COLLECTIONS, DurationMonths, PaymentStatus, EnrollmentStatus } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,15 +54,33 @@ export default function CheckoutPage() {
           });
 
           useEffect(() => {
+                    console.log('[DEBUG Checkout] Course ID:', courseId);
+                    console.log('[DEBUG Checkout] User:', user?.id, user?.profile?.email);
+
+                    // Check if user is authenticated
+                    if (!user) {
+                              console.log('[DEBUG Checkout] No user, redirecting to login');
+                              toast({
+                                        title: 'กรุณาเข้าสู่ระบบ',
+                                        description: 'ต้อง login ก่อนสมัครคอร์ส',
+                                        variant: 'destructive',
+                              });
+                              router.push('/login?redirect=/checkout/' + courseId);
+                              return;
+                    }
+                    console.log('[DEBUG Checkout] User authenticated, fetching course data');
                     fetchCourseData();
-          }, [courseId]);
+          }, [courseId, user]);
 
           const fetchCourseData = async () => {
                     try {
                               setLoading(true);
+                              console.log('[DEBUG Checkout] Fetching course:', courseId);
 
                               // Fetch course
                               const courseDoc = await getDoc(doc(db, COLLECTIONS.COURSES, courseId));
+                              console.log('[DEBUG Checkout] Course exists:', courseDoc.exists());
+
                               if (!courseDoc.exists()) {
                                         toast({
                                                   title: 'Error',
@@ -81,14 +99,15 @@ export default function CheckoutPage() {
                               if (ownerDoc.exists()) {
                                         const ownerData = { id: ownerDoc.id, ...ownerDoc.data() } as User;
 
-                                        // Validate bank details
+                                        // Validate bank details (skip for super_admin testing)
                                         const hasBankDetails = ownerData.bankDetails &&
                                                   (ownerData.bankDetails.qrCodeUrl || ownerData.bankDetails.accountNumber);
 
-                                        if (!hasBankDetails) {
+                                        // Allow super_admin to bypass bank details check for testing
+                                        if (!hasBankDetails && user?.role !== 'super_admin') {
                                                   toast({
-                                                            title: 'Checkout Unavailable',
-                                                            description: 'This course instructor has not set up payment details yet.',
+                                                            title: 'ยังไม่สามารถสมัครได้',
+                                                            description: 'ผู้สอนยังไม่ได้ตั้งค่าบัญชีธนาคาร กรุณาติดต่อผู้สอน',
                                                             variant: 'destructive',
                                                   });
                                                   router.push('/courses');
@@ -201,11 +220,36 @@ export default function CheckoutPage() {
                                         updatedAt: serverTimestamp(),
                               };
 
-                              await addDoc(collection(db, COLLECTIONS.PAYMENT_SLIPS), paymentSlipData);
+                              const paymentSlipRef = await addDoc(collection(db, COLLECTIONS.PAYMENT_SLIPS), paymentSlipData);
+
+                              // Calculate expiration date
+                              const startDate = new Date();
+                              const expiresAt = new Date(startDate);
+                              expiresAt.setMonth(expiresAt.getMonth() + selectedDuration);
+
+                              // Create enrollment document (accessGranted: false)
+                              const enrollmentData = {
+                                        courseId: course.id,
+                                        studentId: user.id,
+                                        ownerId: course.ownerId,
+                                        startDate: serverTimestamp(), // Will be start date
+                                        expiresAt: expiresAt, // Calculated expiration
+                                        selectedDuration: selectedDuration,
+                                        status: EnrollmentStatus.ACTIVE, // Exists but pending access
+                                        accessGranted: false, // Pending approval
+                                        paymentSlipId: paymentSlipRef.id,
+                                        pricePaid: paymentData.amount,
+                                        progress: [],
+                                        overallProgress: 0,
+                                        createdAt: serverTimestamp(),
+                                        updatedAt: serverTimestamp(),
+                              };
+
+                              await addDoc(collection(db, COLLECTIONS.ENROLLMENTS), enrollmentData);
 
                               toast({
                                         title: 'Success!',
-                                        description: 'Payment slip submitted. Wait for instructor approval.',
+                                        description: 'Payment slip submitted. Course is now pending approval.',
                               });
 
                               router.push('/my-enrollments');

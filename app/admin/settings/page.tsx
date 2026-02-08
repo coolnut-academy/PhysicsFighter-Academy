@@ -6,9 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, CreditCard, Bell, Save, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+import { COLLECTIONS } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminSettingsPage() {
-          const { user } = useAuthStore();
+          const { user, setUser } = useAuthStore();
+          const { toast } = useToast();
           const [loading, setLoading] = useState(false);
           const [bankDetails, setBankDetails] = useState({
                     bankName: user?.bankDetails?.bankName || '',
@@ -19,9 +24,47 @@ export default function AdminSettingsPage() {
 
           const handleSubmit = async (e: React.FormEvent) => {
                     e.preventDefault();
+                    if (!user) return;
+                    
                     setLoading(true);
-                    // TODO: Implement settings update
-                    setTimeout(() => setLoading(false), 1000);
+                    try {
+                              // Update bank details in Firestore
+                              const userRef = doc(db, COLLECTIONS.USERS, user.id);
+                              await updateDoc(userRef, {
+                                        bankDetails: {
+                                                  bankName: bankDetails.bankName,
+                                                  accountNumber: bankDetails.accountNumber,
+                                                  accountName: bankDetails.accountName,
+                                                  promptPayId: bankDetails.promptPayId,
+                                        },
+                                        updatedAt: serverTimestamp(),
+                              });
+                              
+                              // Update local state
+                              setUser({
+                                        ...user,
+                                        bankDetails: {
+                                                  bankName: bankDetails.bankName,
+                                                  accountNumber: bankDetails.accountNumber,
+                                                  accountName: bankDetails.accountName,
+                                                  promptPayId: bankDetails.promptPayId,
+                                        },
+                              });
+                              
+                              toast({
+                                        title: 'บันทึกสำเร็จ',
+                                        description: 'ข้อมูลบัญชีธนาคารถูกบันทึกเรียบร้อยแล้ว',
+                              });
+                    } catch (error: any) {
+                              console.error('Error saving bank details:', error);
+                              toast({
+                                        title: 'เกิดข้อผิดพลาด',
+                                        description: error.message || 'ไม่สามารถบันทึกข้อมูลได้',
+                                        variant: 'destructive',
+                              });
+                    } finally {
+                              setLoading(false);
+                    }
           };
 
           return (

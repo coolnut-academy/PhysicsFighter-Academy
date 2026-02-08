@@ -30,8 +30,6 @@ export interface AccessCheckResult {
 }
 
 export interface EnrollmentWithAccess extends Enrollment {
-  /** Computed access flag - THE single source of truth */
-  accessGranted?: boolean;
   /** When access was last computed */
   accessComputedAt?: Timestamp;
   /** Why access was denied (if applicable) */

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { Course, COLLECTIONS, CourseLesson } from '@/types';
+import { Course, COLLECTIONS, CourseLesson, Enrollment } from '@/types';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,47 +17,148 @@ import {
           Zap,
           Lock,
           Shield,
-          Star
+          Star,
+          CalendarClock,
+          Info
 } from 'lucide-react';
 import { LogoIcon } from '@/components/ui/Logo';
 import Link from 'next/link';
 import { formatCurrency, getYouTubeEmbedUrl } from '@/lib/utils';
 import { Loading } from '@/components/shared/Loading';
+import { useToast } from '@/hooks/use-toast';
 import {
           Dialog,
           DialogContent,
           DialogHeader,
           DialogTitle,
           DialogTrigger,
+          DialogDescription,
 } from "@/components/ui/dialog";
+
 
 export default function CourseDetailPage() {
           const params = useParams();
           const router = useRouter();
           const { user } = useAuthStore();
+          const { toast } = useToast();
           const courseId = params.courseId as string;
 
           const [course, setCourse] = useState<Course | null>(null);
           const [loading, setLoading] = useState(true);
           const [activePreviewLesson, setActivePreviewLesson] = useState<CourseLesson | null>(null);
+          const [existingEnrollment, setExistingEnrollment] = useState<Enrollment | null>(null);
+
+          const checkEnrollment = async () => {
+                    if (!user) return;
+                    try {
+                              const q = query(
+                                        collection(db, COLLECTIONS.ENROLLMENTS),
+                                        where('studentId', '==', user.id),
+                                        where('courseId', '==', courseId),
+                                        where('status', '==', 'active') //Optional: Filter by active status if needed, or check expire date later
+                              );
+                              const snapshot = await getDocs(q);
+                              if (!snapshot.empty) {
+                                        // Get the most relevant enrollment (e.g., latest)
+                                        const data = snapshot.docs[0].data();
+                                        setExistingEnrollment({ id: snapshot.docs[0].id, ...data } as Enrollment);
+                              } else {
+                                        setExistingEnrollment(null);
+                              }
+                    } catch (error) {
+                              console.error('Error checking enrollment:', error);
+                    }
+          };
+
+          // Handle enroll button click - check auth before redirect
+          const handleEnrollClick = (e: React.MouseEvent) => {
+                    if (!user) {
+                              e.preventDefault();
+                              toast({
+                                        title: 'กรุณาเข้าสู่ระบบ',
+                                        description: 'ต้อง login ก่อนสมัครคอร์ส',
+                                        variant: 'destructive',
+                              });
+                              router.push('/login?redirect=/courses/' + courseId);
+                              return false;
+                    }
+
+                    if (existingEnrollment) {
+                              let isExpired = false;
+                              let message = 'คุณได้สมัครคอร์สนี้ไปแล้ว';
+                              let description = 'กรุณาตรวจสอบที่เมนู "คอร์สเรียนของฉัน"';
+
+                              if (existingEnrollment.expiresAt) {
+                                        const expiresAt = existingEnrollment.expiresAt instanceof Timestamp
+                                                  ? existingEnrollment.expiresAt.toDate()
+                                                  : new Date(existingEnrollment.expiresAt as any);
+                                        const now = new Date();
+
+                                        if (expiresAt > now) {
+                                                  const diffTime = Math.abs(expiresAt.getTime() - now.getTime());
+                                                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                  message = 'คุณมีคอร์สนี้อยู่แล้ว';
+                                                  description = `เหลือเวลาเรียนอีก ${diffDays} วัน (หมดอายุ: ${expiresAt.toLocaleDateString('th-TH')})`;
+                                        } else {
+                                                  isExpired = true;
+                                        }
+                              }
+
+                              if (!isExpired) {
+                                        e.preventDefault();
+                                        toast({
+                                                  title: message,
+                                                  description: description,
+                                        });
+                                        // Optional: Redirect to course player
+                                        // router.push(`/learn/course/${courseId}`);
+                                        return false;
+                              }
+                              // If expired, allow to proceed (return true/undefined)
+                    }
+          };
 
           useEffect(() => {
                     fetchCourse();
-          }, [courseId]);
+                    if (user) {
+                              checkEnrollment();
+                    }
+          }, [courseId, user]);
 
           const fetchCourse = async () => {
                     try {
                               setLoading(true);
-                              const courseDoc = await getDoc(doc(db, COLLECTIONS.COURSES, courseId));
+
+
+
+
+
+                              const courseDocRef = doc(db, COLLECTIONS.COURSES, courseId);
+
+
+                              const courseDoc = await getDoc(courseDocRef);
+
+
+                              if (courseDoc.exists()) {
+
+                              }
 
                               if (!courseDoc.exists()) {
+
                                         router.push('/courses');
                                         return;
                               }
 
                               setCourse({ id: courseDoc.id, ...courseDoc.data() } as Course);
-                    } catch (error) {
-                              console.error('Error fetching course:', error);
+                    } catch (error: any) {
+                              console.error('[DEBUG] Error fetching course:', error);
+                              console.error('[DEBUG] Error code:', error.code);
+                              console.error('[DEBUG] Error message:', error.message);
+                              toast({
+                                        title: 'Error loading course',
+                                        description: error.message || 'Failed to load course data',
+                                        variant: 'destructive',
+                              });
                     } finally {
                               setLoading(false);
                     }
@@ -283,7 +384,11 @@ export default function CourseDetailPage() {
                                                                                 </div>
 
                                                                                 <div className="space-y-4 mb-8">
-                                                                                          <Link href={`/checkout/${course.id}`} className="block">
+                                                                                          <Link
+                                                                                                    href={user ? `/checkout/${course.id}` : '#'}
+                                                                                                    className="block"
+                                                                                                    onClick={handleEnrollClick}
+                                                                                          >
                                                                                                     <Button className="w-full h-14 bg-fighter-red hover:bg-red-700 text-white border-2 border-black uppercase font-heading text-xl shadow-[4px_4px_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
                                                                                                               <Zap className="w-5 h-5 mr-2" />
                                                                                                               Enroll Now

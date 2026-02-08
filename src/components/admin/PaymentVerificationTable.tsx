@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { doc, updateDoc, addDoc, collection, serverTimestamp, getDoc, runTransaction, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, addDoc, collection, serverTimestamp, getDoc, runTransaction, writeBatch, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { PaymentSlip, PaymentStatus, COLLECTIONS, EnrollmentStatus, DurationMonths } from '@/types';
 import { addMonths } from 'date-fns';
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Check, X, Eye, Loader2 } from 'lucide-react';
+import { Check, X, Eye, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
@@ -43,6 +43,7 @@ export function PaymentVerificationTable({
           const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
           const [rejectionReason, setRejectionReason] = useState('');
           const [processing, setProcessing] = useState(false);
+          const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
           const getStatusBadge = (status: PaymentStatus) => {
                     switch (status) {
@@ -74,43 +75,70 @@ export function PaymentVerificationTable({
 
                                         const courseData = courseDoc.data();
 
-                                        // 2. Prepare refs
-                                        const paymentRef = doc(db, COLLECTIONS.PAYMENT_SLIPS, payment.id);
-                                        const enrollmentRef = doc(collection(db, COLLECTIONS.ENROLLMENTS));
-                                        const revenueRef = doc(collection(db, COLLECTIONS.REVENUE_RECORDS));
-                                        const notificationRef = doc(collection(db, COLLECTIONS.NOTIFICATIONS));
+                                        // 2. Check if enrollment already exists (from checkout)
+                                        const enrollmentsQuery = query(
+                                                  collection(db, COLLECTIONS.ENROLLMENTS),
+                                                  where('studentId', '==', payment.studentId),
+                                                  where('courseId', '==', payment.courseId)
+                                        );
+                                        const enrollmentsSnap = await getDocs(enrollmentsQuery);
 
-                                        // 3. Update payment status
+                                        let enrollmentId: string;
+
+                                        // 3. Calculate expiration
+                                        const expiresAt = addMonths(new Date(), payment.selectedDuration);
+
+                                        // 4. Update payment status
+                                        const paymentRef = doc(db, COLLECTIONS.PAYMENT_SLIPS, payment.id);
                                         transaction.update(paymentRef, {
                                                   status: PaymentStatus.APPROVED,
                                                   reviewedAt: serverTimestamp(),
                                                   updatedAt: serverTimestamp(),
                                         });
 
-                                        // 4. Calculate expiration
-                                        const expiresAt = addMonths(new Date(), payment.selectedDuration);
+                                        if (!enrollmentsSnap.empty) {
+                                                  // Enrollment exists - UPDATE it
+                                                  const existingEnrollmentDoc = enrollmentsSnap.docs[0];
+                                                  enrollmentId = existingEnrollmentDoc.id;
+                                                  const existingEnrollmentRef = doc(db, COLLECTIONS.ENROLLMENTS, enrollmentId);
 
-                                        // 5. Create enrollment
-                                        transaction.set(enrollmentRef, {
-                                                  courseId: payment.courseId,
-                                                  studentId: payment.studentId,
-                                                  ownerId: payment.ownerId,
-                                                  startDate: serverTimestamp(),
-                                                  expiresAt: expiresAt,
-                                                  selectedDuration: payment.selectedDuration,
-                                                  status: EnrollmentStatus.ACTIVE,
-                                                  paymentSlipId: payment.id,
-                                                  pricePaid: payment.amount,
-                                                  progress: [],
-                                                  overallProgress: 0,
-                                                  createdAt: serverTimestamp(),
-                                                  updatedAt: serverTimestamp(),
-                                        });
+                                                  transaction.update(existingEnrollmentRef, {
+                                                            accessGranted: true, // CRITICAL: Grant access
+                                                            startDate: serverTimestamp(),
+                                                            expiresAt: expiresAt,
+                                                            status: EnrollmentStatus.ACTIVE,
+                                                            paymentSlipId: payment.id,
+                                                            pricePaid: payment.amount,
+                                                            updatedAt: serverTimestamp(),
+                                                  });
+                                        } else {
+                                                  // No enrollment exists (legacy) - CREATE new one with accessGranted: true
+                                                  const enrollmentRef = doc(collection(db, COLLECTIONS.ENROLLMENTS));
+                                                  enrollmentId = enrollmentRef.id;
 
-                                        // 6. Create revenue record
+                                                  transaction.set(enrollmentRef, {
+                                                            courseId: payment.courseId,
+                                                            studentId: payment.studentId,
+                                                            ownerId: payment.ownerId,
+                                                            startDate: serverTimestamp(),
+                                                            expiresAt: expiresAt,
+                                                            selectedDuration: payment.selectedDuration,
+                                                            status: EnrollmentStatus.ACTIVE,
+                                                            accessGranted: true, // CRITICAL: Grant access
+                                                            paymentSlipId: payment.id,
+                                                            pricePaid: payment.amount,
+                                                            progress: [],
+                                                            overallProgress: 0,
+                                                            createdAt: serverTimestamp(),
+                                                            updatedAt: serverTimestamp(),
+                                                  });
+                                        }
+
+                                        // 5. Create revenue record
+                                        const revenueRef = doc(collection(db, COLLECTIONS.REVENUE_RECORDS));
                                         transaction.set(revenueRef, {
                                                   ownerId: payment.ownerId,
-                                                  enrollmentId: enrollmentRef.id,
+                                                  enrollmentId: enrollmentId,
                                                   paymentSlipId: payment.id,
                                                   amount: payment.amount,
                                                   courseId: payment.courseId,
@@ -122,14 +150,15 @@ export function PaymentVerificationTable({
                                                   year: new Date().getFullYear(),
                                         });
 
-                                        // 7. Create notification
+                                        // 6. Create notification
+                                        const notificationRef = doc(collection(db, COLLECTIONS.NOTIFICATIONS));
                                         transaction.set(notificationRef, {
                                                   userId: payment.studentId,
                                                   type: 'payment_approved',
                                                   title: 'Payment Approved!',
                                                   message: `Your payment for "${courseData.title}" has been approved. You can now access the course.`,
                                                   relatedCourseId: payment.courseId,
-                                                  relatedEnrollmentId: enrollmentRef.id,
+                                                  relatedEnrollmentId: enrollmentId,
                                                   relatedPaymentSlipId: payment.id,
                                                   isRead: false,
                                                   createdAt: serverTimestamp(),
@@ -226,6 +255,60 @@ export function PaymentVerificationTable({
                     setRejectDialogOpen(true);
           };
 
+          const openDeleteDialog = (payment: PaymentSlip) => {
+                    setSelectedPayment(payment);
+                    setDeleteDialogOpen(true);
+          };
+
+          const handleDelete = async () => {
+                    if (!selectedPayment) return;
+
+                    try {
+                              setProcessing(true);
+
+                              const batch = writeBatch(db);
+
+                              // 1. Delete the payment slip
+                              const paymentRef = doc(db, COLLECTIONS.PAYMENT_SLIPS, selectedPayment.id);
+                              batch.delete(paymentRef);
+
+                              // 2. Also delete any associated enrollment that has accessGranted: false
+                              const enrollmentsQuery = query(
+                                        collection(db, COLLECTIONS.ENROLLMENTS),
+                                        where('paymentSlipId', '==', selectedPayment.id)
+                              );
+                              const enrollmentsSnap = await getDocs(enrollmentsQuery);
+
+                              enrollmentsSnap.docs.forEach((enrollmentDoc) => {
+                                        const enrollmentData = enrollmentDoc.data();
+                                        // Only delete if access was NOT granted (pending enrollment)
+                                        if (!enrollmentData.accessGranted) {
+                                                  batch.delete(doc(db, COLLECTIONS.ENROLLMENTS, enrollmentDoc.id));
+                                        }
+                              });
+
+                              await batch.commit();
+
+                              toast({
+                                        title: 'Payment Deleted',
+                                        description: 'The payment slip has been removed successfully',
+                              });
+
+                              setDeleteDialogOpen(false);
+                              setSelectedPayment(null);
+                              onPaymentUpdated();
+                    } catch (error: any) {
+                              console.error('Error deleting payment:', error);
+                              toast({
+                                        title: 'Error',
+                                        description: error.message || 'Failed to delete payment',
+                                        variant: 'destructive',
+                              });
+                    } finally {
+                              setProcessing(false);
+                    }
+          };
+
           return (
                     <>
                               <div className="rounded-lg border border-white/10 overflow-hidden">
@@ -300,6 +383,16 @@ export function PaymentVerificationTable({
                                                                                                                         </Button>
                                                                                                               </>
                                                                                                     )}
+                                                                                                    {/* Delete button - always visible */}
+                                                                                                    <Button
+                                                                                                              size="sm"
+                                                                                                              onClick={() => openDeleteDialog(payment)}
+                                                                                                              disabled={processing}
+                                                                                                              className="bg-gray-500/20 text-gray-400 hover:bg-red-500/30 hover:text-red-500 border-gray-500/30"
+                                                                                                              title="Delete payment slip"
+                                                                                                    >
+                                                                                                              <Trash2 className="w-4 h-4" />
+                                                                                                    </Button>
                                                                                           </div>
                                                                                 </TableCell>
                                                                       </TableRow>
@@ -401,6 +494,67 @@ export function PaymentVerificationTable({
                                                                       </Button>
                                                             </div>
                                                   </div>
+                                        </DialogContent>
+                              </Dialog>
+
+                              {/* Delete Confirmation Dialog */}
+                              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                                        <DialogContent className="glass-card border-white/10">
+                                                  <DialogHeader>
+                                                            <DialogTitle className="text-red-400">Delete Payment Slip</DialogTitle>
+                                                            <DialogDescription>
+                                                                      Are you sure you want to delete this payment slip? This action cannot be undone.
+                                                            </DialogDescription>
+                                                  </DialogHeader>
+                                                  {selectedPayment && (
+                                                            <div className="space-y-4">
+                                                                      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                                                                                <p className="text-sm text-red-400">
+                                                                                          <strong>Warning:</strong> This will permanently delete the payment slip
+                                                                                          {selectedPayment.status === PaymentStatus.PENDING &&
+                                                                                                    " and any associated pending enrollment"}.
+                                                                                </p>
+                                                                      </div>
+                                                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                                                                <div>
+                                                                                          <p className="text-dark-text-secondary">Amount</p>
+                                                                                          <p className="font-bold text-neon-cyan">
+                                                                                                    {formatCurrency(selectedPayment.amount)}
+                                                                                          </p>
+                                                                                </div>
+                                                                                <div>
+                                                                                          <p className="text-dark-text-secondary">Status</p>
+                                                                                          {getStatusBadge(selectedPayment.status)}
+                                                                                </div>
+                                                                      </div>
+                                                                      <div className="flex gap-3">
+                                                                                <Button
+                                                                                          variant="outline"
+                                                                                          onClick={() => setDeleteDialogOpen(false)}
+                                                                                          className="flex-1"
+                                                                                >
+                                                                                          Cancel
+                                                                                </Button>
+                                                                                <Button
+                                                                                          onClick={handleDelete}
+                                                                                          disabled={processing}
+                                                                                          className="flex-1 bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                                                                                >
+                                                                                          {processing ? (
+                                                                                                    <>
+                                                                                                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                                                              Deleting...
+                                                                                                    </>
+                                                                                          ) : (
+                                                                                                    <>
+                                                                                                              <Trash2 className="w-4 h-4 mr-2" />
+                                                                                                              Delete Payment
+                                                                                                    </>
+                                                                                          )}
+                                                                                </Button>
+                                                                      </div>
+                                                            </div>
+                                                  )}
                                         </DialogContent>
                               </Dialog>
                     </>

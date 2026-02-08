@@ -127,6 +127,17 @@ export default function CoursePlayerPage() {
                                         return;
                               }
 
+                              // Check if access is granted by admin
+                              if (!enrollmentData.accessGranted) {
+                                        toast({
+                                                  title: 'รอการอนุมัติ',
+                                                  description: 'การชำระเงินของคุณอยู่ระหว่างรอการตรวจสอบจากผู้สอน',
+                                                  variant: 'destructive',
+                                        });
+                                        router.push('/my-enrollments');
+                                        return;
+                              }
+
                               setEnrollment(enrollmentData);
                               setAuthorized(true);
 

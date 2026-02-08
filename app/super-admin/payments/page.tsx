@@ -1,20 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, Timestamp, where, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { PaymentSlip, Course, User, COLLECTIONS, PaymentStatus } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Receipt, CheckCircle, XCircle, Eye, ArrowLeft } from 'lucide-react';
+import { Receipt, CheckCircle, XCircle, Eye, ArrowLeft, Trash2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/hooks/use-toast';
+import {
+          Dialog,
+          DialogContent,
+          DialogDescription,
+          DialogHeader,
+          DialogTitle,
+} from '@/components/ui/dialog';
 
 interface PaymentWithDetails {
           id: string;
           student: string;
+          studentId: string;
           course: string;
+          courseId: string;
           amount: number;
           status: string;
           date: string;
@@ -34,6 +43,9 @@ export default function SuperAdminPaymentsPage() {
           const [loading, setLoading] = useState(true);
           const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
           const [filter, setFilter] = useState('all');
+          const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+          const [selectedPayment, setSelectedPayment] = useState<PaymentWithDetails | null>(null);
+          const [deleting, setDeleting] = useState(false);
 
           useEffect(() => {
                     fetchPayments();
@@ -83,7 +95,9 @@ export default function SuperAdminPaymentsPage() {
                                                   return {
                                                             id: payment.id,
                                                             student: studentName,
+                                                            studentId: payment.studentId,
                                                             course: courseName,
+                                                            courseId: payment.courseId,
                                                             amount: payment.amount,
                                                             status: payment.status,
                                                             date: payment.createdAt?.toDate?.().toLocaleDateString('th-TH') || '',
@@ -100,15 +114,53 @@ export default function SuperAdminPaymentsPage() {
                     }
           };
 
-          const handleApprove = async (paymentId: string) => {
+          const handleApprove = async (paymentId: string, studentId?: string, courseId?: string) => {
                     try {
+                              // 1. Update payment slip status
                               await updateDoc(doc(db, COLLECTIONS.PAYMENT_SLIPS, paymentId), {
                                         status: PaymentStatus.APPROVED,
                                         reviewedBy: user?.id,
                                         reviewedAt: Timestamp.now(),
                                         updatedAt: Timestamp.now(),
                               });
-                              toast({ title: 'อนุมัติสำเร็จ', description: 'การชำระเงินได้รับการอนุมัติแล้ว' });
+
+                              // 2. Find and update enrollment to grant access
+                              if (studentId && courseId) {
+                                        try {
+                                                  // Query enrollment by studentId + courseId
+                                                  const enrollmentQuery = query(
+                                                            collection(db, COLLECTIONS.ENROLLMENTS),
+                                                            where('studentId', '==', studentId),
+                                                            where('courseId', '==', courseId)
+                                                  );
+                                                  const enrollmentSnapshot = await getDocs(enrollmentQuery);
+
+                                                  if (!enrollmentSnapshot.empty) {
+                                                            const enrollmentId = enrollmentSnapshot.docs[0].id;
+                                                            const enrollmentRef = doc(db, COLLECTIONS.ENROLLMENTS, enrollmentId);
+
+                                                            // Calculate expiration date
+                                                            const enrollmentData = enrollmentSnapshot.docs[0].data();
+                                                            const startDate = Timestamp.now();
+                                                            const selectedDuration = enrollmentData.selectedDuration || 3; // default 3 months
+                                                            const expiresAt = new Date();
+                                                            expiresAt.setMonth(expiresAt.getMonth() + selectedDuration);
+
+                                                            await updateDoc(enrollmentRef, {
+                                                                      accessGranted: true,
+                                                                      status: 'active',
+                                                                      startDate: startDate,
+                                                                      expiresAt: Timestamp.fromDate(expiresAt),
+                                                                      updatedAt: Timestamp.now(),
+                                                            });
+                                                            console.log('[SuperAdmin] Enrollment access granted:', enrollmentId);
+                                                  }
+                                        } catch (enrollError) {
+                                                  console.error('[SuperAdmin] Error updating enrollment:', enrollError);
+                                        }
+                              }
+
+                              toast({ title: 'อนุมัติสำเร็จ', description: 'การชำระเงินและสิทธิ์การเรียนได้รับการอนุมัติแล้ว' });
                               fetchPayments();
                     } catch (error) {
                               console.error('Error approving payment:', error);
@@ -132,9 +184,66 @@ export default function SuperAdminPaymentsPage() {
                     }
           };
 
+          const openDeleteDialog = (payment: PaymentWithDetails) => {
+                    setSelectedPayment(payment);
+                    setDeleteDialogOpen(true);
+          };
+
+          const handleDelete = async () => {
+                    if (!selectedPayment) return;
+
+                    try {
+                              setDeleting(true);
+                              const batch = writeBatch(db);
+
+                              // 1. Delete the payment slip
+                              const paymentRef = doc(db, COLLECTIONS.PAYMENT_SLIPS, selectedPayment.id);
+                              batch.delete(paymentRef);
+
+                              // 2. Find and delete associated enrollment (only if not approved)
+                              const enrollmentQuery = query(
+                                        collection(db, COLLECTIONS.ENROLLMENTS),
+                                        where('studentId', '==', selectedPayment.studentId),
+                                        where('courseId', '==', selectedPayment.courseId)
+                              );
+                              const enrollmentSnapshot = await getDocs(enrollmentQuery);
+
+                              enrollmentSnapshot.docs.forEach((enrollmentDoc) => {
+                                        const enrollmentData = enrollmentDoc.data();
+                                        // Only delete if access was NOT granted (pending enrollment)
+                                        if (!enrollmentData.accessGranted) {
+                                                  batch.delete(doc(db, COLLECTIONS.ENROLLMENTS, enrollmentDoc.id));
+                                                  console.log('[Delete] Removing pending enrollment:', enrollmentDoc.id);
+                                        }
+                              });
+
+                              // 3. Commit the batch
+                              await batch.commit();
+
+                              toast({
+                                        title: 'ลบสำเร็จ',
+                                        description: 'ข้อมูลการชำระเงินถูกลบออกจากระบบแล้ว',
+                              });
+
+                              setDeleteDialogOpen(false);
+                              setSelectedPayment(null);
+                              fetchPayments(); // Refresh the list
+                    } catch (error) {
+                              console.error('Error deleting payment:', error);
+                              toast({
+                                        title: 'เกิดข้อผิดพลาด',
+                                        description: 'ไม่สามารถลบข้อมูลได้',
+                                        variant: 'destructive',
+                              });
+                    } finally {
+                              setDeleting(false);
+                    }
+          };
+
           const filteredPayments = filter === 'all'
                     ? payments
                     : payments.filter(p => p.status === filter);
+
 
           if (loading) {
                     return (
@@ -219,7 +328,7 @@ export default function SuperAdminPaymentsPage() {
                                                                                                                                   )}
                                                                                                                                   {payment.status === 'pending' && (
                                                                                                                                             <>
-                                                                                                                                                      <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApprove(payment.id)}>
+                                                                                                                                                      <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApprove(payment.id, payment.studentId, payment.courseId)}>
                                                                                                                                                                 <CheckCircle className="w-4 h-4" />
                                                                                                                                                       </Button>
                                                                                                                                                       <Button variant="destructive" size="sm" onClick={() => handleReject(payment.id)}>
@@ -227,6 +336,16 @@ export default function SuperAdminPaymentsPage() {
                                                                                                                                                       </Button>
                                                                                                                                             </>
                                                                                                                                   )}
+                                                                                                                                  {/* Delete Button - Always visible */}
+                                                                                                                                  <Button
+                                                                                                                                            variant="outline"
+                                                                                                                                            size="sm"
+                                                                                                                                            className="bg-transparent border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                                                                                                                                            onClick={() => openDeleteDialog(payment)}
+                                                                                                                                            title="ลบรายการ"
+                                                                                                                                  >
+                                                                                                                                            <Trash2 className="w-4 h-4" />
+                                                                                                                                  </Button>
                                                                                                                         </div>
                                                                                                               </td>
                                                                                                     </tr>
@@ -237,6 +356,91 @@ export default function SuperAdminPaymentsPage() {
                                                   </div>
                                         </CardContent>
                               </Card>
+
+                              {/* Delete Confirmation Dialog */}
+                              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                                        <DialogContent className="bg-ink-black border-golden text-white">
+                                                  <DialogHeader>
+                                                            <DialogTitle className="text-red-500 flex items-center gap-2">
+                                                                      <AlertTriangle className="w-5 h-5" />
+                                                                      ยืนยันการลบข้อมูล
+                                                            </DialogTitle>
+                                                            <DialogDescription className="text-gray-400">
+                                                                      การดำเนินการนี้ไม่สามารถย้อนกลับได้ ข้อมูลจะถูกลบออกจากระบบทั้งหมด
+                                                            </DialogDescription>
+                                                  </DialogHeader>
+                                                  {selectedPayment && (
+                                                            <div className="space-y-4">
+                                                                      {/* Warning Box */}
+                                                                      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                                                                                <p className="text-sm text-red-400">
+                                                                                          <strong>⚠️ คำเตือน:</strong> การลบข้อมูลนี้จะส่งผลต่อ:
+                                                                                </p>
+                                                                                <ul className="text-sm text-red-400 mt-2 ml-4 list-disc">
+                                                                                          <li>ลบใบสลิปการชำระเงินจาก Database</li>
+                                                                                          {selectedPayment.status === 'pending' && (
+                                                                                                    <li>ลบการลงทะเบียนที่รอการอนุมัติ</li>
+                                                                                          )}
+                                                                                </ul>
+                                                                      </div>
+
+                                                                      {/* Payment Details */}
+                                                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                                                                <div>
+                                                                                          <p className="text-gray-500">นักเรียน</p>
+                                                                                          <p className="font-bold text-white">{selectedPayment.student}</p>
+                                                                                </div>
+                                                                                <div>
+                                                                                          <p className="text-gray-500">คอร์ส</p>
+                                                                                          <p className="font-bold text-white">{selectedPayment.course}</p>
+                                                                                </div>
+                                                                                <div>
+                                                                                          <p className="text-gray-500">จำนวนเงิน</p>
+                                                                                          <p className="font-bold text-golden">฿{selectedPayment.amount.toLocaleString()}</p>
+                                                                                </div>
+                                                                                <div>
+                                                                                          <p className="text-gray-500">สถานะ</p>
+                                                                                          <span className={`px-2 py-0.5 text-xs font-bold uppercase ${selectedPayment.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                                                                                              selectedPayment.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                                                                                        'bg-yellow-100 text-yellow-700'
+                                                                                                    }`}>
+                                                                                                    {statusLabels[selectedPayment.status] || selectedPayment.status}
+                                                                                          </span>
+                                                                                </div>
+                                                                      </div>
+
+                                                                      {/* Action Buttons */}
+                                                                      <div className="flex gap-3 pt-2">
+                                                                                <Button
+                                                                                          variant="outline"
+                                                                                          onClick={() => setDeleteDialogOpen(false)}
+                                                                                          className="flex-1 bg-transparent border-white text-white hover:bg-white hover:text-black"
+                                                                                          disabled={deleting}
+                                                                                >
+                                                                                          ยกเลิก
+                                                                                </Button>
+                                                                                <Button
+                                                                                          onClick={handleDelete}
+                                                                                          disabled={deleting}
+                                                                                          className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                                                                                >
+                                                                                          {deleting ? (
+                                                                                                    <>
+                                                                                                              <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                                                                              กำลังลบ...
+                                                                                                    </>
+                                                                                          ) : (
+                                                                                                    <>
+                                                                                                              <Trash2 className="w-4 h-4 mr-2" />
+                                                                                                              ยืนยันลบข้อมูล
+                                                                                                    </>
+                                                                                          )}
+                                                                                </Button>
+                                                                      </div>
+                                                            </div>
+                                                  )}
+                                        </DialogContent>
+                              </Dialog>
                     </div>
           );
 }

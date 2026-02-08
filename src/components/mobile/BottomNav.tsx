@@ -21,7 +21,7 @@ interface NavItem {
 const studentNavItems: NavItem[] = [
   { href: '/', label: 'หน้าแรก', icon: Home },
   { href: '/courses', label: 'คอร์ส', icon: BookOpen },
-  { href: '/my-courses', label: 'เรียน', icon: GraduationCap },
+  { href: '/my-enrollments', label: 'คอร์สของฉัน', icon: GraduationCap },
   { href: '/dashboard', label: 'โปรไฟล์', icon: User },
 ];
 

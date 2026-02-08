@@ -3,10 +3,11 @@
 
 import { create } from 'zustand';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/config';
 import { getUserData, updateLastLogin, signIn, logOut } from '@/lib/firebase/auth';
 import { getRoleFromToken, refreshToken, getCustomClaims, CustomClaims } from '@/lib/firebase/tokenRefresh';
-import { User, UserRole } from '@/types';
+import { User, UserRole, COLLECTIONS } from '@/types';
 
 // ============================================================================
 // Store Types
@@ -37,6 +38,7 @@ interface AuthState {
   setError: (error: string | null) => void;
   initialize: () => () => void;
   clearError: () => void;
+  createUserProfile: (firebaseUser: FirebaseUser) => Promise<User>;
 
   // Token/Claims Actions
   refreshUserToken: () => Promise<void>;
@@ -64,6 +66,45 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // ============================================================================
   // Actions
   // ============================================================================
+
+  /**
+   * Create user profile in Firestore for new users (Google Sign-In)
+   */
+  createUserProfile: async (firebaseUser: FirebaseUser) => {
+    try {
+      console.log('[Auth] Creating user profile for:', firebaseUser.uid);
+      
+      // Handle display name - fallback to 'User' if not available
+      const displayName = firebaseUser.displayName || '';
+      const nameParts = displayName.split(/\s+/);
+      const firstName = nameParts[0] || 'User';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      const userData = {
+        role: 'student' as UserRole,
+        profile: {
+          firstName: firstName,
+          lastName: lastName,
+          email: firebaseUser.email || '',
+          avatarUrl: firebaseUser.photoURL || '',
+        },
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), userData);
+      console.log('[Auth] User profile created successfully');
+      
+      return {
+        id: firebaseUser.uid,
+        ...userData,
+      } as User;
+    } catch (error: any) {
+      console.error('[Auth] Error creating user profile:', error);
+      throw error;
+    }
+  },
 
   /**
    * Initialize auth listener
@@ -98,20 +139,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ isWaitingForUserData: true });
           
           try {
-            // Fetch user data from Firestore with retry for new Google users
-            let userData = null;
-            let retries = 0;
-            const maxRetries = 5;
+            // Fetch user data from Firestore
+            console.log('[Auth] Fetching user data for:', firebaseUser.uid);
+            let userData = await getUserData(firebaseUser.uid);
+            console.log('[Auth] User data found:', !!userData);
             
-            while (retries < maxRetries) {
-              userData = await getUserData(firebaseUser.uid);
-              if (userData) break;
-              
-              // User document might not exist yet (e.g., new Google sign-in)
-              // Wait and retry with exponential backoff
-              console.log(`User data not found, retry ${retries + 1}/${maxRetries}...`);
-              await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retries)));
-              retries++;
+            // If user doesn't exist in Firestore, create profile automatically
+            if (!userData) {
+              console.log('[Auth] User not found in Firestore, creating profile...');
+              try {
+                userData = await get().createUserProfile(firebaseUser);
+                console.log('[Auth] Profile created successfully');
+              } catch (createError: any) {
+                console.error('[Auth] Failed to create user profile:', createError);
+                console.error('[Auth] Error code:', createError.code);
+                console.error('[Auth] Error message:', createError.message);
+                // Check if it's a permissions error
+                if (createError.code === 'permission-denied') {
+                  set({
+                    firebaseUser: null,
+                    user: null,
+                    tokenRole: null,
+                    tokenSyncedAt: null,
+                    claimsVersion: null,
+                    initializing: false,
+                    isWaitingForUserData: false,
+                    error: 'Permission denied. Please contact support.',
+                  });
+                  return;
+                }
+                throw createError;
+              }
             }
 
             if (userData) {
@@ -132,8 +190,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 error: null,
               });
             } else {
-              // User exists in Auth but not in Firestore after all retries
-              console.error('User not found in Firestore after retries');
+              // Should not reach here if createUserProfile succeeded
+              console.error('[Auth] User data is null after creation attempt');
               set({
                 firebaseUser: null,
                 user: null,
@@ -142,7 +200,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 claimsVersion: null,
                 initializing: false,
                 isWaitingForUserData: false,
-                error: 'User data not found. Please contact support.',
+                error: 'Failed to create user profile. Please try again.',
               });
             }
           } catch (error: any) {
