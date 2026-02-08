@@ -314,7 +314,7 @@ export default function CreateCoursePage() {
                               {/* Header */}
                               <div className="flex items-center gap-4">
                                         <Link href="/admin/courses">
-                                                  <Button variant="outline" size="icon" className="border-ink-black text-ink-black hover:bg-gray-100">
+                                                  <Button variant="outline" size="icon">
                                                             <ArrowLeft className="w-4 h-4" />
                                                   </Button>
                                         </Link>
@@ -543,7 +543,7 @@ export default function CreateCoursePage() {
                                                                                 variant="outline"
                                                                                 size="sm"
                                                                                 onClick={addModule}
-                                                                                className="border-2 border-ink-black text-ink-black hover:bg-gray-100"
+                                                                                
                                                                       >
                                                                                 <Plus className="w-4 h-4 mr-2" />
                                                                                 เพิ่มโมดูล
@@ -715,7 +715,7 @@ export default function CreateCoursePage() {
                                         {/* Submit Buttons */}
                                         <div className="flex gap-4">
                                                   <Link href="/admin/courses" className="flex-1">
-                                                            <Button type="button" variant="outline" className="w-full border-2 border-ink-black text-ink-black hover:bg-gray-100">
+                                                            <Button type="button" variant="outline" className="w-full">
                                                                       ยกเลิก
                                                             </Button>
                                                   </Link>

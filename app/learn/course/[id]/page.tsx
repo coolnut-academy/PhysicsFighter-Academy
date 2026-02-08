@@ -18,9 +18,9 @@ import {
           Download,
           FileText,
           Shield,
-          Trophy,
-          Swords
+          Trophy
 } from 'lucide-react';
+import { LogoIcon } from '@/components/ui/Logo';
 import Link from 'next/link';
 import { Loading } from '@/components/shared/Loading';
 import { calculateTimeRemaining, getYouTubeEmbedUrl } from '@/lib/utils';
@@ -415,7 +415,7 @@ export default function CoursePlayerPage() {
                                                                       </>
                                                             ) : (
                                                                       <div className="flex flex-col items-center justify-center p-12 text-center border-4 border-dashed border-gray-300 rounded-lg">
-                                                                                <Swords className="w-16 h-16 text-gray-300 mb-4" />
+                                                                                <LogoIcon size={64} className="opacity-30 mb-4" />
                                                                                 <h3 className="text-2xl font-heading text-gray-400 uppercase">Select a Mission</h3>
                                                                                 <p className="text-gray-500 font-bold">Choose a lesson from the mission log to begin.</p>
                                                                       </div>

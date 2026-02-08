@@ -3,7 +3,8 @@
 import { Course } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Clock, Users, Flame, Star, Swords } from 'lucide-react';
+import { BookOpen, Clock, Users, Flame, Star } from 'lucide-react';
+import { LogoIcon } from '@/components/ui/Logo';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
 
@@ -14,17 +15,17 @@ interface CourseCardProps {
 export function CourseCard({ course }: CourseCardProps) {
           // Difficulty color mapping
           const difficultyConfig = {
-                    beginner: { bg: 'bg-green-500', text: 'text-white', label: 'ROOKIE' },
-                    intermediate: { bg: 'bg-golden', text: 'text-ink-black', label: 'WARRIOR' },
-                    advanced: { bg: 'bg-fighter-red', text: 'text-white', label: 'MASTER' },
+                    beginner: { bg: 'bg-green-500', text: 'text-white', label: 'ปรับพื้นฐาน' },
+                    intermediate: { bg: 'bg-golden', text: 'text-ink-black', label: 'ติวสอบเข้ามหาลัยฯ' },
+                    advanced: { bg: 'bg-fighter-red', text: 'text-white', label: 'ติวเข้มข้น/ข้อสอบปราบเซียน' },
           };
 
           const difficulty = difficultyConfig[course.difficulty] || difficultyConfig.beginner;
 
           return (
-                    <Card className="overflow-hidden group hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-x-[2px] hover:-translate-y-[2px] transition-all duration-150">
+                    <Card className="overflow-hidden group">
                               {/* Thumbnail - Character Portrait Style */}
-                              <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden border-b-[3px] border-ink-black">
+                              <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden rounded-t-2xl">
                                         {course.thumbnailUrl ? (
                                                   <img
                                                             src={course.thumbnailUrl}
@@ -33,7 +34,7 @@ export function CourseCard({ course }: CourseCardProps) {
                                                   />
                                         ) : (
                                                   <div className="flex items-center justify-center h-full bg-gray-100">
-                                                            <Swords className="w-16 h-16 text-gray-300" />
+                                                            <LogoIcon size={64} className="opacity-30" />
                                                   </div>
                                         )}
 
@@ -47,20 +48,16 @@ export function CourseCard({ course }: CourseCardProps) {
                                         {/* Featured Badge */}
                                         {course.featured && (
                                                   <div className="absolute top-2 right-2">
-                                                            <div className="bg-golden text-ink-black px-3 py-1 font-bold text-xs uppercase border-2 border-ink-black -skew-x-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                                                                      <span style={{ transform: 'skewX(6deg)', display: 'inline-block' }} className="flex items-center gap-1">
-                                                                                <Flame className="w-3 h-3" /> Hot
-                                                                      </span>
+                                                            <div className="bg-golden text-ink-black px-3 py-1 font-bold text-xs uppercase rounded-lg shadow-md flex items-center gap-1">
+                                                                      <Flame className="w-3 h-3" /> Hot
                                                             </div>
                                                   </div>
                                         )}
 
                                         {/* Difficulty Badge - Fighter Rank */}
                                         <div className="absolute bottom-2 left-2">
-                                                  <div className={`${difficulty.bg} ${difficulty.text} px-3 py-1 font-bold text-xs uppercase border-2 border-ink-black -skew-x-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]`}>
-                                                            <span style={{ transform: 'skewX(6deg)', display: 'inline-block' }}>
-                                                                      {difficulty.label}
-                                                            </span>
+                                                  <div className={`${difficulty.bg} ${difficulty.text} px-3 py-1 font-bold text-xs uppercase rounded-lg shadow-md`}>
+                                                            {difficulty.label}
                                                   </div>
                                         </div>
                               </div>
@@ -131,8 +128,8 @@ export function CourseCard({ course }: CourseCardProps) {
                                         {/* CTA Button */}
                                         <Link href={`/courses/${course.id}`} className="block">
                                                   <Button className="w-full" size="lg">
-                                                            <span style={{ transform: 'skewX(6deg)' }} className="flex items-center gap-2">
-                                                                      <Swords className="w-4 h-4" />
+                                                            <span className="flex items-center gap-2">
+                                                                      <LogoIcon size={16} />
                                                                       Enter Arena
                                                             </span>
                                                   </Button>

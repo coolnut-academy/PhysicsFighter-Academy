@@ -235,7 +235,7 @@ export default function CheckoutPage() {
                                         {/* Header */}
                                         <div className="flex items-center gap-4 mb-8">
                                                   <Link href={`/courses/${courseId}`}>
-                                                            <Button variant="outline" size="icon" className="bg-transparent neon-border border-2 border-white text-white hover:bg-white hover:text-black">
+                                                            <Button variant="outline" size="icon">
                                                                       <ArrowLeft className="w-4 h-4" />
                                                             </Button>
                                                   </Link>
@@ -406,7 +406,7 @@ function DurationStep({
                                         ))}
                               </div>
 
-                              <Button onClick={onNext} className="w-full neon-button">
+                              <Button onClick={onNext} className="w-full">
                                         <span className="flex items-center gap-2">
                                                   Continue to Payment
                                                   <ArrowRight className="w-4 h-4" />
@@ -518,11 +518,11 @@ function PaymentStep({
                               </div>
 
                               <div className="flex gap-4 mt-8">
-                                        <Button variant="outline" onClick={onBack} className="flex-1 bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
+                                        <Button variant="outline" onClick={onBack} className="flex-1">
                                                   <ArrowLeft className="w-4 h-4 mr-2" />
                                                   Back
                                         </Button>
-                                        <Button onClick={onNext} className="flex-1 neon-button">
+                                        <Button onClick={onNext} className="flex-1">
                                                   <span className="flex items-center gap-2">
                                                             I've Made Payment
                                                             <ArrowRight className="w-4 h-4" />
@@ -652,14 +652,14 @@ function ConfirmationStep({
                               </div>
 
                               <div className="flex gap-4 mt-8">
-                                        <Button variant="outline" onClick={onBack} className="flex-1 bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
+                                        <Button variant="outline" onClick={onBack} className="flex-1">
                                                   <ArrowLeft className="w-4 h-4 mr-2" />
                                                   Back
                                         </Button>
                                         <Button
                                                   onClick={onSubmit}
                                                   disabled={submitting}
-                                                  className="flex-1 neon-button"
+                                                  className="flex-1"
                                         >
                                                   {submitting ? (
                                                             <>

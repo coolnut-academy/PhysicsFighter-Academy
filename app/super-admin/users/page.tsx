@@ -231,7 +231,7 @@ export default function UsersManagementPage() {
                               {/* Header */}
                               <div className="flex items-center gap-4 mb-8">
                                         <Link href="/super-admin/dashboard">
-                                                  <Button variant="outline" size="sm" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
+                                                  <Button variant="outline" size="sm">
                                                             <ArrowLeft className="w-4 h-4" />
                                                   </Button>
                                         </Link>

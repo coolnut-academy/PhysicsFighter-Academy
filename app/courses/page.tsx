@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/select';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Loading } from '@/components/shared/Loading';
-import { Search, Filter, BookOpen, ArrowLeft, Swords } from 'lucide-react';
+import { Search, Filter, BookOpen, ArrowLeft } from 'lucide-react';
+import { LogoIcon } from '@/components/ui/Logo';
 import Link from 'next/link';
 
 export default function CoursesPage() {
@@ -104,7 +105,7 @@ export default function CoursesPage() {
           return (
                     <div className="min-h-screen bg-paper-pattern">
                               {/* Top Bar */}
-                              <div className="bg-ink-black text-white p-4 sticky top-0 z-50 border-b-4 border-fighter-red">
+                              <div className="bg-ink-black text-white p-4 sticky top-0 z-50">
                                         <div className="container mx-auto flex items-center justify-between">
                                                   <Link href="/">
                                                             <Button variant="outline" size="sm" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black uppercase font-bold skew-x-[-10deg]">
@@ -118,7 +119,7 @@ export default function CoursesPage() {
                               </div>
 
                               {/* Hero Section */}
-                              <div className="bg-fighter-red text-white py-16 relative overflow-hidden border-b-4 border-black">
+                              <div className="bg-fighter-red text-white py-16 relative overflow-hidden">
                                         <div className="absolute inset-0 opacity-10"
                                                   style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}
                                         />
@@ -134,7 +135,7 @@ export default function CoursesPage() {
 
                               {/* Filters Section */}
                               <div className="container mx-auto px-4 -mt-8 mb-12 relative z-20">
-                                        <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_rgba(0,0,0,1)]">
+                                        <div className="bg-white border-2 border-black p-6 rounded-2xl shadow-xl">
                                                   <div className="flex flex-col md:flex-row gap-4">
                                                             {/* Search */}
                                                             <div className="flex-1 relative">
@@ -143,19 +144,19 @@ export default function CoursesPage() {
                                                                                 placeholder="SEARCH MISSION..."
                                                                                 value={searchQuery}
                                                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                                                className="pl-10 h-12 bg-gray-50 border-2 border-black font-bold uppercase placeholder:text-gray-400 focus:ring-fighter-red focus:border-fighter-red"
+                                                                                className="pl-10 h-12 bg-gray-50 border-2 border-black rounded-xl font-bold uppercase placeholder:text-gray-400 focus:ring-fighter-red focus:border-fighter-red"
                                                                       />
                                                             </div>
 
                                                             {/* Category Filter */}
                                                             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                                                      <SelectTrigger className="w-full md:w-48 h-12 bg-white border-2 border-black font-bold uppercase">
+                                                                      <SelectTrigger className="w-full md:w-48 h-12 bg-white border-2 border-black rounded-xl font-bold uppercase">
                                                                                 <div className="flex items-center gap-2">
                                                                                           <Filter className="w-4 h-4" />
                                                                                           <SelectValue placeholder="Category" />
                                                                                 </div>
                                                                       </SelectTrigger>
-                                                                      <SelectContent className="border-2 border-black">
+                                                                      <SelectContent className="border-2 border-black rounded-xl">
                                                                                 <SelectItem value="all" className="font-bold">ALL DISCIPLINES</SelectItem>
                                                                                 {categories.map((cat) => (
                                                                                           <SelectItem key={cat} value={cat} className="font-bold uppercase">
@@ -167,14 +168,14 @@ export default function CoursesPage() {
 
                                                             {/* Difficulty Filter */}
                                                             <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                                                                      <SelectTrigger className="w-full md:w-48 h-12 bg-white border-2 border-black font-bold uppercase">
+                                                                      <SelectTrigger className="w-full md:w-48 h-12 bg-white border-2 border-black rounded-xl font-bold uppercase">
                                                                                 <SelectValue placeholder="Difficulty" />
                                                                       </SelectTrigger>
-                                                                      <SelectContent className="border-2 border-black">
+                                                                      <SelectContent className="border-2 border-black rounded-xl">
                                                                                 <SelectItem value="all" className="font-bold">ALL RANKS</SelectItem>
-                                                                                <SelectItem value="beginner" className="font-bold">ROOKIE</SelectItem>
-                                                                                <SelectItem value="intermediate" className="font-bold">WARRIOR</SelectItem>
-                                                                                <SelectItem value="advanced" className="font-bold">MASTER</SelectItem>
+                                                                                <SelectItem value="beginner" className="font-bold">ปรับพื้นฐาน</SelectItem>
+                                                                                <SelectItem value="intermediate" className="font-bold">ติวสอบเข้ามหาลัยฯ</SelectItem>
+                                                                                <SelectItem value="advanced" className="font-bold">ติวเข้มข้น/ข้อสอบปราบเซียน</SelectItem>
                                                                       </SelectContent>
                                                             </Select>
 
@@ -196,7 +197,7 @@ export default function CoursesPage() {
 
                                                   {/* Results Count */}
                                                   <div className="mt-4 flex items-center gap-2 font-bold text-sm uppercase text-gray-500">
-                                                            <Swords className="w-4 h-4" />
+                                                            <LogoIcon size={16} />
                                                             Found {filteredCourses.length} Stages
                                                   </div>
                                         </div>

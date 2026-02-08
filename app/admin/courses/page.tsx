@@ -69,7 +69,7 @@ export default function AdminCoursesPage() {
                               <div className="flex items-center justify-between mb-8">
                                         <div className="flex items-center gap-4">
                                                   <Link href="/admin/dashboard">
-                                                            <Button variant="outline" size="sm" className="border-black text-black hover:bg-gray-100">
+                                                            <Button variant="outline" size="sm">
                                                                       <ArrowLeft className="w-4 h-4" />
                                                             </Button>
                                                   </Link>
@@ -190,13 +190,13 @@ export default function AdminCoursesPage() {
 
                                                                                 <div className="flex gap-2">
                                                                                           <Link href={`/admin/courses/${course.id}/edit`} className="flex-1">
-                                                                                                    <Button variant="outline" size="sm" className="w-full border-2 border-ink-black text-ink-black hover:bg-gray-100">
+                                                                                                    <Button variant="outline" size="sm" className="w-full">
                                                                                                               <Edit className="w-4 h-4 mr-1" />
                                                                                                               แก้ไข
                                                                                                     </Button>
                                                                                           </Link>
                                                                                           <Link href={`/admin/courses/${course.id}/preview`} className="flex-1">
-                                                                                                    <Button variant="outline" size="sm" className="w-full border-2 border-ink-black text-ink-black hover:bg-gray-100">
+                                                                                                    <Button variant="outline" size="sm" className="w-full">
                                                                                                               <Eye className="w-4 h-4 mr-1" />
                                                                                                               ดูตัวอย่าง
                                                                                                     </Button>

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Swords, BookOpen, GraduationCap, LogOut, User, Trophy } from 'lucide-react';
+import { BookOpen, GraduationCap, LogOut, User, Trophy } from 'lucide-react';
+import { LogoIcon } from '@/components/ui/Logo';
 import { cn } from '@/lib/utils';
 import {
           DropdownMenu,
@@ -42,11 +43,11 @@ export function StudentNavbar() {
                                         <div className="flex items-center justify-between h-16">
                                                   {/* 🥋 Logo */}
                                                   <Link href="/dashboard" className="flex items-center gap-3">
-                                                            <div className="bg-fighter-red p-2 border-2 border-ink-black -skew-x-6">
-                                                                      <Swords className="w-6 h-6 text-white" style={{ transform: 'skewX(6deg)' }} />
-                                                            </div>
-                                                            <span className="text-xl font-heading uppercase text-ink-black -skew-x-3">
-                                                                      Physics Fighter
+                                                            <LogoIcon size={36} />
+                                                            <span className="text-xl font-bold">
+                                                                      <span className="text-cover-red">Physics</span>
+                                                                      <span className="text-cover-gray">Fight</span>
+                                                                      <span className="text-cover-gray">Ter</span>
                                                             </span>
                                                   </Link>
 
@@ -61,13 +62,13 @@ export function StudentNavbar() {
                                                                                           key={item.href}
                                                                                           href={item.href}
                                                                                           className={cn(
-                                                                                                    'px-4 py-2 font-bold uppercase text-sm transition-all -skew-x-3 border-2',
+                                                                                                    'px-4 py-2 font-bold uppercase text-sm transition-all rounded-xl border-2',
                                                                                                     isActive
-                                                                                                              ? 'bg-fighter-red text-white border-ink-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'
-                                                                                                              : 'bg-white text-ink-black border-transparent hover:border-ink-black hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                                                                                                              ? 'bg-fighter-red text-white border-ink-black shadow-md'
+                                                                                                              : 'bg-white text-ink-black border-transparent hover:border-ink-black hover:shadow-sm'
                                                                                           )}
                                                                                 >
-                                                                                          <span style={{ transform: 'skewX(3deg)' }} className="flex items-center gap-2">
+                                                                                          <span className="flex items-center gap-2">
                                                                                                     <Icon className="w-4 h-4" />
                                                                                                     {item.label}
                                                                                           </span>
@@ -80,8 +81,8 @@ export function StudentNavbar() {
                                                   <div className="flex items-center gap-4">
                                                             <DropdownMenu>
                                                                       <DropdownMenuTrigger className="focus:outline-none">
-                                                                                <div className="flex items-center gap-2 px-3 py-2 border-2 border-ink-black bg-white hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all -skew-x-3">
-                                                                                          <Avatar className="w-8 h-8 border-2 border-ink-black">
+                                                                                <div className="flex items-center gap-2 px-3 py-2 border-2 border-ink-black bg-white hover:shadow-md transition-all rounded-xl">
+                                                                                          <Avatar className="w-8 h-8 border-2 border-ink-black rounded-full">
                                                                                                     <AvatarImage src={user?.profile.avatarUrl} />
                                                                                                     <AvatarFallback className="bg-fighter-red text-white font-bold">
                                                                                                               {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}
@@ -92,10 +93,10 @@ export function StudentNavbar() {
                                                                                           </span>
                                                                                 </div>
                                                                       </DropdownMenuTrigger>
-                                                                      <DropdownMenuContent align="end" className="w-56 bg-white border-2 border-ink-black p-0">
+                                                                      <DropdownMenuContent align="end" className="w-56 bg-white border-2 border-ink-black rounded-xl p-0">
                                                                                 <DropdownMenuLabel className="p-4 border-b-2 border-ink-black">
                                                                                           <div className="flex items-center gap-3">
-                                                                                                    <Avatar className="w-10 h-10 border-2 border-ink-black">
+                                                                                                    <Avatar className="w-10 h-10 border-2 border-ink-black rounded-full">
                                                                                                               <AvatarImage src={user?.profile.avatarUrl} />
                                                                                                               <AvatarFallback className="bg-fighter-red text-white font-bold">
                                                                                                                         {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}

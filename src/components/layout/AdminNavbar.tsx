@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Swords, LogOut, User, Flame } from 'lucide-react';
+import { LogOut, User, Flame } from 'lucide-react';
+import { LogoIcon } from '@/components/ui/Logo';
 import {
           DropdownMenu,
           DropdownMenuContent,
@@ -34,12 +35,12 @@ export function AdminNavbar() {
                                         <div className="flex items-center justify-between h-16">
                                                   {/* 🥋 Arcade Logo */}
                                                   <Link href="/admin/dashboard" className="flex items-center gap-3">
-                                                            <div className="bg-fighter-red p-2 border-2 border-ink-black -skew-x-6">
-                                                                      <Swords className="w-6 h-6 text-white" style={{ transform: 'skewX(6deg)' }} />
-                                                            </div>
-                                                            <div className="-skew-x-3">
-                                                                      <span className="text-xl font-heading uppercase text-ink-black tracking-wide">
-                                                                                Physics Fighter
+                                                            <LogoIcon size={36} />
+                                                            <div>
+                                                                      <span className="text-xl font-bold tracking-wide">
+                                                                                <span className="text-cover-red">Physics</span>
+                                                                                <span className="text-cover-gray">Fight</span>
+                                                                                <span className="text-cover-gray">Ter</span>
                                                                       </span>
                                                                       <div className="flex items-center gap-1">
                                                                                 <Flame className="w-3 h-3 text-fighter-red" />
@@ -52,8 +53,8 @@ export function AdminNavbar() {
                                                   <div className="flex items-center gap-4">
                                                             <DropdownMenu>
                                                                       <DropdownMenuTrigger className="focus:outline-none">
-                                                                                <div className="flex items-center gap-3 px-3 py-2 border-2 border-ink-black bg-white hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all -skew-x-3">
-                                                                                          <Avatar className="w-8 h-8 border-2 border-ink-black">
+                                                                                <div className="flex items-center gap-3 px-3 py-2 border-2 border-ink-black bg-white hover:shadow-md transition-all rounded-xl">
+                                                                                          <Avatar className="w-8 h-8 border-2 border-ink-black rounded-full">
                                                                                                     <AvatarImage src={user?.profile.avatarUrl} />
                                                                                                     <AvatarFallback className="bg-fighter-red text-white font-bold text-sm">
                                                                                                               {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}
@@ -64,10 +65,10 @@ export function AdminNavbar() {
                                                                                           </span>
                                                                                 </div>
                                                                       </DropdownMenuTrigger>
-                                                                      <DropdownMenuContent align="end" className="w-56 bg-white border-2 border-ink-black p-0">
+                                                                      <DropdownMenuContent align="end" className="w-56 bg-white border-2 border-ink-black rounded-xl p-0">
                                                                                 <DropdownMenuLabel className="p-4 border-b-2 border-ink-black">
                                                                                           <div className="flex items-center gap-3">
-                                                                                                    <Avatar className="w-10 h-10 border-2 border-ink-black">
+                                                                                                    <Avatar className="w-10 h-10 border-2 border-ink-black rounded-full">
                                                                                                               <AvatarImage src={user?.profile.avatarUrl} />
                                                                                                               <AvatarFallback className="bg-fighter-red text-white font-bold">
                                                                                                                         {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}

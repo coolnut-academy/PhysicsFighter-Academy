@@ -17,9 +17,11 @@ const config: Config = {
                     },
                     extend: {
                               fontFamily: {
-                                        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui"],
-                                        heading: ["var(--font-anton)", "sans-serif"],
+                                        sans: ["var(--font-kanit)", "var(--font-inter)", "ui-sans-serif", "system-ui"],
+                                        heading: ["var(--font-kanit)", "var(--font-anton)", "sans-serif"],
                                         teko: ["var(--font-teko)", "sans-serif"],
+                                        kanit: ["var(--font-kanit)", "sans-serif"],
+                                        inter: ["var(--font-inter)", "sans-serif"],
                               },
                               colors: {
                                         // Core Theme Colors
@@ -61,8 +63,14 @@ const config: Config = {
 
                                         // 🥋 The Dojo - Arcade Theme Colors
                                         fighter: {
-                                                  red: "#dc2626",
+                                                  red: "#E31E24",
                                                   "red-dark": "#b91c1c",
+                                        },
+                                        // Cover FB Colors
+                                        cover: {
+                                                  red: "#E31E24",
+                                                  gray: "#808080",
+                                                  darkgray: "#6B7280",
                                         },
                                         ink: {
                                                   black: "#000000",
@@ -82,9 +90,9 @@ const config: Config = {
                                         sm: "calc(var(--radius) - 4px)",
                               },
                               boxShadow: {
-                                        "arcade": "4px 4px 0px 0px #000000",
-                                        "arcade-lg": "6px 6px 0px 0px #000000",
-                                        "arcade-red": "4px 4px 0px 0px #dc2626",
+                                        "arcade": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                                        "arcade-lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                                        "arcade-red": "0 4px 6px -1px rgba(220, 38, 38, 0.2)",
                               },
                               keyframes: {
                                         "accordion-down": {

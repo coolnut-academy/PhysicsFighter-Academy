@@ -1,0 +1,274 @@
+rules_version = '2';
+
+/**
+ * Firestore Security Rules - Lesson Architecture V2
+ * 
+ * Supports both legacy (nested) and new (flat) content structures
+ * during migration period.
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================================================
+    // EXISTING HELPER FUNCTIONS (from main rules)
+    // ========================================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getRoleFromClaims() {
+      return request.auth.token.role;
+    }
+    
+    function isSuperAdmin() {
+      return isAuthenticated() && getRoleFromClaims() == 'super_admin';
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() 
+        && (getRoleFromClaims() == 'admin' || getRoleFromClaims() == 'super_admin');
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && getRoleFromClaims() == 'student';
+    }
+    
+    function isOwner(ownerId) {
+      return isAuthenticated() && request.auth.uid == ownerId;
+    }
+    
+    function isSelf(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ========================================================================
+    // NEW: Enrollment Access Check (from deterministic model)
+    // ========================================================================
+    
+    function hasEnrollmentAccess(courseId) {
+      // Check for enrollment with accessGranted
+      let enrollmentPath = /databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId);
+      return exists(enrollmentPath) 
+        && get(enrollmentPath).data.accessGranted == true;
+    }
+    
+    // ========================================================================
+    // NEW: Course Modules Collection (V2)
+    // ========================================================================
+    
+    match /courseModules/{moduleId} {
+      
+      // Helper: Check if user can read parent course
+      function canReadParentCourse(courseId) {
+        let course = get(/databases/$(database)/documents/courses/$(courseId));
+        return course.data.isPublished == true
+          || isOwner(course.data.ownerId)
+          || isSuperAdmin();
+      }
+      
+      // Read: If can read parent course
+      allow read: if canReadParentCourse(resource.data.courseId);
+      
+      // Create: Course owner or admin
+      // Must have valid courseId and match course owner
+      allow create: if (
+        request.resource.data.courseId is string
+        && exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId))
+        && (
+          isOwner(get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerId)
+          || isSuperAdmin()
+        )
+      );
+      
+      // Update: Course owner or admin
+      allow update: if (
+        isOwner(resource.data.ownerId)
+        || isSuperAdmin()
+      );
+      
+      // Delete: Course owner or admin
+      allow delete: if (
+        isOwner(resource.data.ownerId)
+        || isSuperAdmin()
+      );
+    }
+    
+    // ========================================================================
+    // NEW: Course Lessons Collection (V2)
+    // ========================================================================
+    
+    match /courseLessons/{lessonId} {
+      
+      // Helper: Check if course is published
+      function isCoursePublished(courseId) {
+        let course = get(/databases/$(database)/documents/courses/$(courseId));
+        return course.data.isPublished == true;
+      }
+      
+      // Helper: Check if user can access this lesson
+      function canAccessLesson(lessonData) {
+        // Owner/Admin always has access
+        if (isOwner(lessonData.ownerId) || isSuperAdmin()) {
+          return true;
+        }
+        
+        // Preview lessons are public if course is published
+        if (lessonData.isPreview == true && isCoursePublished(lessonData.courseId)) {
+          return true;
+        }
+        
+        // Otherwise, need enrollment with access
+        return hasEnrollmentAccess(lessonData.courseId);
+      }
+      
+      // Read: Complex access control based on preview/enrollment
+      allow read: if canAccessLesson(resource.data);
+      
+      // Create: Course owner or admin
+      // Must have valid courseId and moduleId
+      allow create: if (
+        request.resource.data.courseId is string
+        && request.resource.data.moduleId is string
+        && exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId))
+        && exists(/databases/$(database)/documents/courseModules/$(request.resource.data.moduleId))
+        && (
+          isOwner(get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerId)
+          || isSuperAdmin()
+        )
+      );
+      
+      // Update: Course owner or admin
+      // Also validate that courseId and moduleId cannot be changed
+      allow update: if (
+        (isOwner(resource.data.ownerId) || isSuperAdmin())
+        && request.resource.data.courseId == resource.data.courseId
+        && request.resource.data.moduleId == resource.data.moduleId
+      );
+      
+      // Delete: Course owner or admin
+      allow delete: if (
+        isOwner(resource.data.ownerId)
+        || isSuperAdmin()
+      );
+    }
+    
+    // ========================================================================
+    // NEW: Quiz Questions Sub-collection (V2)
+    // ========================================================================
+    
+    match /quizQuestions/{questionId} {
+      
+      // Helper: Check access to parent lesson
+      function canAccessParentLesson(lessonId) {
+        let lesson = get(/databases/$(database)/documents/courseLessons/$(lessonId));
+        
+        // Same logic as lesson access
+        if (isOwner(lesson.data.ownerId) || isSuperAdmin()) {
+          return true;
+        }
+        
+        if (lesson.data.isPreview == true) {
+          let course = get(/databases/$(database)/documents/courses/$(lesson.data.courseId));
+          if (course.data.isPublished == true) {
+            return true;
+          }
+        }
+        
+        return hasEnrollmentAccess(lesson.data.courseId);
+      }
+      
+      // Read: If can access parent lesson
+      allow read: if canAccessParentLesson(resource.data.lessonId);
+      
+      // Write: Course owner or admin
+      allow write: if (
+        isOwner(resource.data.ownerId)
+        || isSuperAdmin()
+      );
+    }
+    
+    // ========================================================================
+    // EXISTING COLLECTIONS (from main rules - abbreviated)
+    // ========================================================================
+    
+    match /users/{userId} {
+      allow read: if isSelf(userId) || isSuperAdmin();
+      allow create: if isSuperAdmin()
+                    || (isSelf(userId) 
+                        && request.resource.data.role == 'student'
+                        && request.resource.data.isActive == true);
+      allow update: if (isSelf(userId) && roleNotChanged()) || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /courses/{courseId} {
+      // Read: Published courses public, owners/admins always
+      allow read: if resource.data.isPublished == true 
+                  || isOwner(resource.data.ownerId) 
+                  || isSuperAdmin();
+      
+      // Create: Admin only
+      allow create: if (isAdmin() && request.resource.data.ownerId == request.auth.uid) 
+                    || isSuperAdmin();
+      
+      // Update: Owner or super admin
+      allow update: if (isOwner(resource.data.ownerId) 
+                      && request.resource.data.ownerId == resource.data.ownerId) 
+                    || isSuperAdmin();
+      
+      // Delete: Owner or super admin
+      allow delete: if isOwner(resource.data.ownerId) || isSuperAdmin();
+    }
+    
+    // ... (other existing collections) ...
+    
+    // ========================================================================
+    // LESSON ACCESS VIA LEGACY NESTED STRUCTURE
+    // ========================================================================
+    
+    /**
+     * Legacy access for courses still using nested modules
+     * This supports Phase 1-2 of migration
+     */
+    match /courses/{courseId} {
+      
+      // Helper for legacy lesson access
+      function canAccessNestedLesson(courseData, moduleIndex, lessonIndex) {
+        // Owner/Admin always
+        if (isOwner(courseData.ownerId) || isSuperAdmin()) {
+          return true;
+        }
+        
+        // Check if lesson exists
+        if courseData.modules == null 
+           || courseData.modules[moduleIndex] == null
+           || courseData.modules[moduleIndex].lessons == null
+           || courseData.modules[moduleIndex].lessons[lessonIndex] == null {
+          return false;
+        }
+        
+        let lesson = courseData.modules[moduleIndex].lessons[lessonIndex];
+        
+        // Preview lessons if course published
+        if (lesson.isPreview == true && courseData.isPublished == true) {
+          return true;
+        }
+        
+        // Otherwise need enrollment
+        return hasEnrollmentAccess(courseId);
+      }
+      
+      // Allow read for legacy access (uses same course rules above)
+    }
+    
+    // ========================================================================
+    // DEFAULT DENY
+    // ========================================================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

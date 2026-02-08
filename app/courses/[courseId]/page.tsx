@@ -16,10 +16,10 @@ import {
           CheckCircle,
           Zap,
           Lock,
-          Swords,
           Shield,
           Star
 } from 'lucide-react';
+import { LogoIcon } from '@/components/ui/Logo';
 import Link from 'next/link';
 import { formatCurrency, getYouTubeEmbedUrl } from '@/lib/utils';
 import { Loading } from '@/components/shared/Loading';
@@ -77,9 +77,9 @@ export default function CourseDetailPage() {
 
           // Difficulty color mapping (reused from CourseCard for consistency)
           const difficultyConfig = {
-                    beginner: { bg: 'bg-green-500', text: 'text-white', label: 'ROOKIE' },
-                    intermediate: { bg: 'bg-golden', text: 'text-ink-black', label: 'WARRIOR' },
-                    advanced: { bg: 'bg-fighter-red', text: 'text-white', label: 'MASTER' },
+                    beginner: { bg: 'bg-green-500', text: 'text-white', label: 'ปรับพื้นฐาน' },
+                    intermediate: { bg: 'bg-golden', text: 'text-ink-black', label: 'ติวสอบเข้ามหาลัยฯ' },
+                    advanced: { bg: 'bg-fighter-red', text: 'text-white', label: 'ติวเข้มข้น/ข้อสอบปราบเซียน' },
           };
           const difficulty = difficultyConfig[course.difficulty] || difficultyConfig.beginner;
 
@@ -150,7 +150,7 @@ export default function CourseDetailPage() {
                                                                                                     />
                                                                                           ) : (
                                                                                                     <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                                                                                              <Swords className="w-16 h-16 text-gray-300" />
+                                                                                                              <LogoIcon size={64} className="opacity-30" />
                                                                                                     </div>
                                                                                           )}
                                                                                 </div>

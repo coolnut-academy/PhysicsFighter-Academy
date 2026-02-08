@@ -66,41 +66,35 @@
 @layer components {
 
   /* ========================================
-     🎮 ARCADE CARD - Heavy black border + hard shadow
+     🎮 ARCADE CARD - Rounded with soft shadow
      ======================================== */
   .arcade-card {
-    @apply relative bg-white border-[3px] border-ink-black rounded-md;
-    box-shadow: 4px 4px 0px 0px #000000;
+    @apply relative bg-white border-[3px] border-ink-black rounded-xl;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 
   .arcade-card:hover {
-    box-shadow: 6px 6px 0px 0px #000000;
-    transform: translate(-2px, -2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-4px);
   }
 
   /* ========================================
-     🔴 ARCADE BUTTON - Skewed with Fighter Red
+     🔴 ARCADE BUTTON - Rounded with Fighter Red
      ======================================== */
   .arcade-button {
-    @apply relative inline-flex items-center justify-center px-6 py-3 font-heading text-lg uppercase tracking-wider bg-fighter-red text-white border-[3px] border-ink-black transition-all duration-150 ease-out;
-    transform: skewX(-6deg);
-    box-shadow: 4px 4px 0px 0px #000000;
-  }
-
-  .arcade-button>* {
-    transform: skewX(6deg);
-    /* Counter-skew the content */
+    @apply relative inline-flex items-center justify-center px-6 py-3 font-heading text-lg uppercase tracking-wider bg-fighter-red text-white border-[3px] border-ink-black rounded-xl transition-all duration-150 ease-out;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 
   .arcade-button:hover {
     @apply bg-fighter-red-dark;
-    box-shadow: 2px 2px 0px 0px #000000;
-    transform: skewX(-6deg) translate(2px, 2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
   }
 
   .arcade-button:active {
-    box-shadow: 0px 0px 0px 0px #000000;
-    transform: skewX(-6deg) translate(4px, 4px);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    transform: translateY(0);
   }
 
   /* Secondary Button Variant */
@@ -114,10 +108,10 @@
   }
 
   /* ========================================
-     📊 HEALTH BAR - Fighting Game Style
+     📊 HEALTH BAR - Rounded Style
      ======================================== */
   .health-bar {
-    @apply relative h-6 w-full border-[3px] border-ink-black rounded-sm overflow-hidden;
+    @apply relative h-6 w-full border-[3px] border-ink-black rounded-lg overflow-hidden;
     background: linear-gradient(to bottom, #374151, #1f2937);
   }
 
@@ -149,11 +143,11 @@
   }
 
   /* ========================================
-     ⭐ SCORE BADGE - Golden Stars/Points
+     ⭐ SCORE BADGE - Golden Stars/Points (Rounded)
      ======================================== */
   .score-badge {
-    @apply inline-flex items-center gap-1 px-3 py-1 bg-golden text-ink-black font-bold text-sm uppercase border-2 border-ink-black;
-    box-shadow: 2px 2px 0px 0px #000000;
+    @apply inline-flex items-center gap-1 px-3 py-1 bg-golden text-ink-black font-bold text-sm uppercase border-2 border-ink-black rounded-lg;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   /* ========================================
@@ -166,10 +160,10 @@
   }
 
   /* ========================================
-     🔲 ARCADE INPUT - Form inputs
+     🔲 ARCADE INPUT - Form inputs (Rounded)
      ======================================== */
   .arcade-input {
-    @apply w-full px-4 py-3 bg-white border-[3px] border-ink-black text-ink-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-fighter-red focus:ring-offset-2;
+    @apply w-full px-4 py-3 bg-white border-[3px] border-ink-black rounded-xl text-ink-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-fighter-red focus:ring-offset-2;
   }
 
   /* ========================================
@@ -188,9 +182,9 @@
     paint-order: stroke fill;
   }
 
-  /* Loading Spinner - Arcade Style */
+  /* Loading Spinner - Rounded Style */
   .arcade-spinner {
-    @apply w-12 h-12 border-4 border-ink-black border-t-fighter-red rounded-full animate-spin;
+    @apply w-12 h-12 border-4 border-ink-black/20 border-t-fighter-red rounded-full animate-spin;
   }
 
   /* Scrollbar Styling */

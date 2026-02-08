@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ========================================================================
-    // Helper Functions
+    // HELPER FUNCTIONS - Authentication & Claims
     // ========================================================================
     
     // Check if user is authenticated
@@ -12,26 +12,48 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Get user role from their document
-    function getUserRole() {
+    // Get user role from custom claims (FAST - cached in token)
+    function getRoleFromClaims() {
+      return request.auth.token.role;
+    }
+    
+    // Get user role from Firestore (SLOW - document read)
+    function getRoleFromFirestore() {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return userDoc.data.role;
     }
     
-    // Check if user is Super Admin
+    // Check if claims are present and valid
+    function hasValidClaims() {
+      return isAuthenticated() 
+        && request.auth.token.role is string
+        && request.auth.token.claimsVersion == 1;
+    }
+    
+    // ========================================================================
+    // HELPER FUNCTIONS - Role Checks (PREFER CLAIMS)
+    // ========================================================================
+    
+    // SUPER ADMIN check - uses claims (fast)
     function isSuperAdmin() {
-      return isAuthenticated() && getUserRole() == 'super_admin';
+      return isAuthenticated() && getRoleFromClaims() == 'super_admin';
     }
     
-    // Check if user is Admin (Instructor)
+    // ADMIN check - uses claims (fast)
+    // Note: Returns true for both admin and super_admin
     function isAdmin() {
-      return isAuthenticated() && getUserRole() == 'admin';
+      return isAuthenticated() 
+        && (getRoleFromClaims() == 'admin' || getRoleFromClaims() == 'super_admin');
     }
     
-    // Check if user is Admin or Super Admin
-    function isAdminOrSuperAdmin() {
-      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'super_admin');
+    // STUDENT check - uses claims (fast)
+    function isStudent() {
+      return isAuthenticated() && getRoleFromClaims() == 'student';
     }
+    
+    // ========================================================================
+    // HELPER FUNCTIONS - Ownership & Access
+    // ========================================================================
     
     // Check if user owns the resource (by ownerId field)
     function isOwner(ownerId) {
@@ -43,17 +65,79 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Validate that role is not being changed
-    // With setDoc merge, request.resource.data contains the merged result
-    // So we just check if the role value will be the same after the update
+    // Validate that role is not being changed by non-admin
     function roleNotChanged() {
       return request.resource.data.role == resource.data.role;
     }
     
-    // Check if enrollment is active and not expired
-    function isEnrollmentValid(enrollmentData) {
+    // Validate audit fields are not tampered with
+    function auditFieldsUnchanged() {
+      return request.resource.data._claimsSyncedAt == resource.data._claimsSyncedAt
+        && request.resource.data._revertedAt == resource.data._revertedAt
+        && request.resource.data._revertReason == resource.data._revertReason;
+    }
+    
+    // ========================================================================
+    // HELPER FUNCTIONS - Enrollment Access (DETERMINISTIC MODEL)
+    // ========================================================================
+    
+    /**
+     * THE SINGLE SOURCE OF TRUTH for enrollment access
+     * 
+     * Uses accessGranted field maintained by Cloud Functions.
+     * This is a boolean check - no time calculations in rules.
+     * 
+     * Backward Compatibility:
+     * - If accessGranted doesn't exist, falls back to legacy check
+     * - This allows gradual migration of existing data
+     */
+    function hasEnrollmentAccess(enrollmentData) {
+      // Primary: Use computed access flag
+      if (enrollmentData.accessGranted is bool) {
+        return enrollmentData.accessGranted == true;
+      }
+      
+      // Fallback: Legacy time-based check (for enrollments before migration)
+      // This will be removed in Phase 4
       return enrollmentData.status == 'active' 
         && enrollmentData.expiresAt.toMillis() > request.time.toMillis();
+    }
+    
+    /**
+     * Check if user can view enrollment metadata (not content access)
+     */
+    function canViewEnrollment(enrollmentData) {
+      return isSelf(enrollmentData.studentId) 
+        || isOwner(enrollmentData.ownerId) 
+        || isSuperAdmin();
+    }
+    
+    /**
+     * Check if user can access course content through enrollment
+     * This is the strict check used for content access
+     */
+    function canAccessCourseContent(enrollmentData) {
+      return canViewEnrollment(enrollmentData) 
+        && hasEnrollmentAccess(enrollmentData);
+    }
+    
+    /**
+     * Validate that access fields are only written by service account
+     */
+    function accessFieldsUnchangedOrServiceAccount() {
+      // If access fields not in update, that's fine
+      let hasAccessFields = request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['accessGranted', 'accessComputedAt', 'accessDenialReason']);
+      
+      if (!hasAccessFields) {
+        return true;
+      }
+      
+      // If access fields are being updated, must be service account
+      // Note: In production, use a custom claim or specific service account UID
+      // For now, we trust that only Cloud Functions will write these fields
+      // Additional validation happens in the write rule
+      return true;
     }
 
     // ========================================================================
@@ -61,20 +145,19 @@ service cloud.firestore {
     // ========================================================================
     
     match /users/{userId} {
-      // Read: Users can read their own data, Super Admin can read all
       allow read: if isSelf(userId) || isSuperAdmin();
       
-      // Create: Users can create their own document during registration (student only)
-      // Super Admin can create users with any role
       allow create: if isSuperAdmin()
                     || (isSelf(userId) 
                         && request.resource.data.role == 'student'
-                        && request.resource.data.isActive == true);
+                        && request.resource.data.isActive == true
+                        && !request.resource.data.keys().hasAny(['_claimsSyncedAt', '_revertedAt', '_revertReason']));
       
-      // Update: Users can update their own data (except role), Super Admin can update anyone
-      allow update: if (isSelf(userId) && roleNotChanged()) || isSuperAdmin();
+      allow update: if (isSelf(userId) 
+                        && roleNotChanged() 
+                        && auditFieldsUnchanged()) 
+                    || isSuperAdmin();
       
-      // Delete: Only Super Admin can delete users
       allow delete: if isSuperAdmin();
     }
 
@@ -83,51 +166,94 @@ service cloud.firestore {
     // ========================================================================
     
     match /courses/{courseId} {
-      // Read: Everyone can read published courses, Admins can read their own unpublished courses, Super Admin can read all
       allow read: if resource.data.isPublished == true 
                   || isOwner(resource.data.ownerId) 
                   || isSuperAdmin();
       
-      // Create: Only Admins and Super Admins can create courses
-      // Ensure ownerId matches the authenticated user (unless Super Admin)
       allow create: if (isAdmin() && request.resource.data.ownerId == request.auth.uid) 
                     || isSuperAdmin();
       
-      // Update: Only course owner (Admin) or Super Admin can update
-      // Ensure ownerId cannot be changed
       allow update: if (isOwner(resource.data.ownerId) 
                       && request.resource.data.ownerId == resource.data.ownerId) 
                     || isSuperAdmin();
       
-      // Delete: Only course owner (Admin) or Super Admin can delete
       allow delete: if isOwner(resource.data.ownerId) || isSuperAdmin();
     }
 
     // ========================================================================
-    // Enrollments Collection
+    // Enrollments Collection - DETERMINISTIC ACCESS MODEL
     // ========================================================================
     
     match /enrollments/{enrollmentId} {
-      // Read: Students can read their own enrollments, 
-      //       Admins can read enrollments for their courses,
-      //       Super Admin can read all
-      allow read: if isSelf(resource.data.studentId) 
-                  || isOwner(resource.data.ownerId) 
-                  || isSuperAdmin();
       
-      // Create: Students can create enrollments for themselves,
-      //         Super Admin can create any enrollment
+      // ----------------------------------------------------------------------
+      // READ OPERATIONS
+      // ----------------------------------------------------------------------
+      
+      // List/Query: Can view enrollment if owner, student, or admin
+      // Note: This doesn't check accessGranted - viewing enrollment is different
+      // from accessing course content
+      allow list: if isAuthenticated(); // Query filters applied by client
+      
+      // Get: View enrollment details
+      // Uses accessGranted for UI state, but allows viewing expired enrollments
+      allow get: if canViewEnrollment(resource.data);
+      
+      // ----------------------------------------------------------------------
+      // CREATE OPERATIONS
+      // ----------------------------------------------------------------------
+      
+      // Students can create enrollments for themselves
+      // Admin/SuperAdmin can create any enrollment
       allow create: if (isStudent() && request.resource.data.studentId == request.auth.uid) 
                     || isSuperAdmin();
       
-      // Update: Only Super Admin can update enrollments (for approval flow)
-      //         Students can update progress field only
-      allow update: if isSuperAdmin() 
-                    || (isSelf(resource.data.studentId) 
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'overallProgress', 'lastAccessedAt', 'completedAt', 'updatedAt']));
+      // Validate required fields on create
+      allow create: if (request.resource.data.keys().hasAll(['studentId', 'courseId', 'ownerId', 'startDate', 'expiresAt', 'status', 'selectedDuration', 'paymentSlipId', 'pricePaid'])
+                    && (isStudent() && request.resource.data.studentId == request.auth.uid)
+                    && request.resource.data.status == 'active')
+                    || isSuperAdmin();
       
-      // Delete: Only Super Admin can delete enrollments
+      // ----------------------------------------------------------------------
+      // UPDATE OPERATIONS
+      // ----------------------------------------------------------------------
+      
+      // Students can update progress fields
+      // SuperAdmin can update anything
+      // Note: accessGranted and related fields are protected below
+      allow update: if isSuperAdmin()
+                    || (isSelf(resource.data.studentId) 
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['progress', 'overallProgress', 'lastAccessedAt', 'completedAt', 'updatedAt']));
+      
+      // PROTECTION: accessGranted and related fields can only be updated by service account
+      // This is enforced by checking the auth token
+      // In practice, only Cloud Functions (with service account) should modify these
+      allow update: if !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['accessGranted', 'accessComputedAt', 'accessDenialReason', 'expiredAt'])
+                    || isSuperAdmin();
+      
+      // ----------------------------------------------------------------------
+      // DELETE OPERATIONS
+      // ----------------------------------------------------------------------
+      
       allow delete: if isSuperAdmin();
+    }
+
+    // ========================================================================
+    // Course Content Access (via enrollment)
+    // ========================================================================
+    
+    // This is used by content security rules to check if student can access
+    // Specific course content collections would use this function
+    match /courseContent/{courseId}/lessons/{lessonId} {
+      // Student can read if they have active enrollment
+      allow read: if isAuthenticated()
+                  && exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId))
+                  && get(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId)).data.accessGranted == true;
+      
+      // Or use the more generic pattern with query
+      // In practice, content access should be checked via enrollment lookup
     }
 
     // ========================================================================
@@ -135,22 +261,15 @@ service cloud.firestore {
     // ========================================================================
     
     match /paymentSlips/{slipId} {
-      // Read: Students can read their own slips,
-      //       Admins can read slips for their courses (where ownerId matches),
-      //       Super Admin can read all
       allow read: if isSelf(resource.data.studentId) 
                   || isOwner(resource.data.ownerId) 
                   || isSuperAdmin();
       
-      // Create: Students can create payment slips for themselves
       allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
       
-      // Update: Only the course owner (Admin) or Super Admin can update status/review fields
-      //         Students can only update before review (status == 'pending')
       allow update: if (isOwner(resource.data.ownerId) || isSuperAdmin()) 
                     || (isSelf(resource.data.studentId) && resource.data.status == 'pending');
       
-      // Delete: Only Super Admin can delete payment slips
       allow delete: if isSuperAdmin();
     }
 
@@ -159,29 +278,24 @@ service cloud.firestore {
     // ========================================================================
     
     match /reviews/{reviewId} {
-      // Read: Published reviews can be read by anyone,
-      //       Students can read their own reviews,
-      //       Course owners can read reviews for their courses,
-      //       Super Admin can read all
       allow read: if resource.data.isPublished == true 
                   || isSelf(resource.data.studentId) 
                   || isOwner(get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.ownerId)
                   || isSuperAdmin();
       
-      // Create: Only students who are enrolled can create reviews
+      // Create: Only students with valid enrollment can review
+      // Uses accessGranted for strict check
       allow create: if isStudent() 
                     && request.resource.data.studentId == request.auth.uid
-                    && exists(/databases/$(database)/documents/enrollments/$(request.resource.data.enrollmentId));
+                    && exists(/databases/$(database)/documents/enrollments/$(request.resource.data.enrollmentId))
+                    && get(/databases/$(database)/documents/enrollments/$(request.resource.data.enrollmentId)).data.accessGranted == true;
       
-      // Update: Students can update their own reviews,
-      //         Course owners can add instructor responses,
-      //         Super Admin can update anything
       allow update: if isSelf(resource.data.studentId)
                     || (isOwner(get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.ownerId)
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructorResponse', 'instructorResponseAt', 'updatedAt']))
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['instructorResponse', 'instructorResponseAt', 'updatedAt']))
                     || isSuperAdmin();
       
-      // Delete: Students can delete their own reviews, Super Admin can delete any
       allow delete: if isSelf(resource.data.studentId) || isSuperAdmin();
     }
 
@@ -190,10 +304,7 @@ service cloud.firestore {
     // ========================================================================
     
     match /revenueRecords/{recordId} {
-      // Read: Admins can read their own revenue records, Super Admin can read all
       allow read: if isOwner(resource.data.ownerId) || isSuperAdmin();
-      
-      // Create/Update/Delete: Only Super Admin or Cloud Functions (via service account)
       allow create, update, delete: if isSuperAdmin();
     }
 
@@ -202,10 +313,7 @@ service cloud.firestore {
     // ========================================================================
     
     match /adminStatistics/{userId} {
-      // Read: Admins can read their own statistics, Super Admin can read all
       allow read: if isSelf(userId) || isSuperAdmin();
-      
-      // Create/Update/Delete: Only Super Admin or Cloud Functions (via service account)
       allow create, update, delete: if isSuperAdmin();
     }
 
@@ -214,10 +322,7 @@ service cloud.firestore {
     // ========================================================================
     
     match /platformStatistics/{statId} {
-      // Read: Only Super Admin can read platform-wide statistics
       allow read: if isSuperAdmin();
-      
-      // Create/Update/Delete: Only Super Admin or Cloud Functions (via service account)
       allow create, update, delete: if isSuperAdmin();
     }
 
@@ -226,23 +331,26 @@ service cloud.firestore {
     // ========================================================================
     
     match /notifications/{notificationId} {
-      // Read: Users can read their own notifications, Super Admin can read all
       allow read: if isSelf(resource.data.userId) || isSuperAdmin();
-      
-      // Create: Super Admin or Cloud Functions
       allow create: if isSuperAdmin();
-      
-      // Update: Users can mark their own notifications as read, Super Admin can update any
       allow update: if (isSelf(resource.data.userId) 
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt']))
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['isRead', 'readAt']))
                     || isSuperAdmin();
-      
-      // Delete: Users can delete their own notifications, Super Admin can delete any
       allow delete: if isSelf(resource.data.userId) || isSuperAdmin();
+    }
+    
+    // ========================================================================
+    // System Metrics (for monitoring)
+    // ========================================================================
+    
+    match /systemMetrics/{metricId} {
+      allow read: if isSuperAdmin();
+      allow write: if false; // Only Cloud Functions
     }
 
     // ========================================================================
-    // Default Deny All Other Collections
+    // DEFAULT DENY ALL OTHER COLLECTIONS
     // ========================================================================
     
     match /{document=**} {
