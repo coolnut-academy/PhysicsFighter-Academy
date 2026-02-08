@@ -40,26 +40,67 @@
     --ring: 0 84% 50%;
 
     --radius: 0.375rem;
+    
+    /* Safe Area Variables */
+    --sat: env(safe-area-inset-top);
+    --sar: env(safe-area-inset-right);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    /* Improve touch response on mobile */
+    touch-action: manipulation;
   }
 
   html {
     scroll-behavior: smooth;
+    /* Prevent text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Smooth scrolling for iOS */
+    -webkit-overflow-scrolling: touch;
   }
 
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Safe area padding for notched devices */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: none;
+    /* Smooth font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   /* Arcade-style selection */
   ::selection {
     @apply bg-fighter-red text-white;
+  }
+
+  /* Focus visible for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-fighter-red ring-offset-2;
+  }
+
+  /* Remove tap highlight on mobile */
+  a, button {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
@@ -78,12 +119,26 @@
     transform: translateY(-4px);
   }
 
+  /* Mobile optimized card */
+  @media (max-width: 640px) {
+    .arcade-card {
+      @apply border-2 rounded-lg;
+      box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    }
+    .arcade-card:hover {
+      transform: translateY(-2px);
+    }
+  }
+
   /* ========================================
      🔴 ARCADE BUTTON - Rounded with Fighter Red
      ======================================== */
   .arcade-button {
     @apply relative inline-flex items-center justify-center px-6 py-3 font-heading text-lg uppercase tracking-wider bg-fighter-red text-white border-[3px] border-ink-black rounded-xl transition-all duration-150 ease-out;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    /* Minimum touch target size (44px) */
+    min-height: 44px;
+    min-width: 44px;
   }
 
   .arcade-button:hover {
@@ -95,6 +150,15 @@
   .arcade-button:active {
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
     transform: translateY(0);
+  }
+
+  /* Mobile optimized button */
+  @media (max-width: 640px) {
+    .arcade-button {
+      @apply px-4 py-3 text-base border-2 rounded-lg;
+      /* Larger touch target on mobile */
+      min-height: 48px;
+    }
   }
 
   /* Secondary Button Variant */
@@ -128,6 +192,13 @@
     background: linear-gradient(to bottom, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
   }
 
+  /* Mobile health bar */
+  @media (max-width: 640px) {
+    .health-bar {
+      @apply h-5 border-2 rounded-md;
+    }
+  }
+
   /* ========================================
      🏆 ROUND HEADER - "ROUND 1" Style Text
      ======================================== */
@@ -142,12 +213,27 @@
     text-shadow: 3px 3px 0px #000000;
   }
 
+  /* Mobile header */
+  @media (max-width: 640px) {
+    .round-header {
+      @apply text-2xl;
+      text-shadow: 2px 2px 0px #dc2626;
+    }
+  }
+
   /* ========================================
      ⭐ SCORE BADGE - Golden Stars/Points (Rounded)
      ======================================== */
   .score-badge {
     @apply inline-flex items-center gap-1 px-3 py-1 bg-golden text-ink-black font-bold text-sm uppercase border-2 border-ink-black rounded-lg;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Mobile badge */
+  @media (max-width: 640px) {
+    .score-badge {
+      @apply px-2 py-0.5 text-xs border;
+    }
   }
 
   /* ========================================
@@ -159,11 +245,29 @@
     clip-path: polygon(8% 0%, 100% 0%, 92% 100%, 0% 100%);
   }
 
+  /* Mobile tag */
+  @media (max-width: 640px) {
+    .fighter-tag {
+      @apply px-3 py-1 text-base;
+    }
+  }
+
   /* ========================================
      🔲 ARCADE INPUT - Form inputs (Rounded)
      ======================================== */
   .arcade-input {
     @apply w-full px-4 py-3 bg-white border-[3px] border-ink-black rounded-xl text-ink-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-fighter-red focus:ring-offset-2;
+    /* Minimum touch target */
+    min-height: 48px;
+    /* Prevent zoom on iOS */
+    font-size: 16px;
+  }
+
+  /* Mobile input */
+  @media (max-width: 640px) {
+    .arcade-input {
+      @apply px-3 py-2.5 border-2 rounded-lg;
+    }
   }
 
   /* ========================================
@@ -182,9 +286,23 @@
     paint-order: stroke fill;
   }
 
+  /* Mobile text stroke */
+  @media (max-width: 640px) {
+    .text-stroke {
+      -webkit-text-stroke: 1px #000000;
+    }
+  }
+
   /* Loading Spinner - Rounded Style */
   .arcade-spinner {
     @apply w-12 h-12 border-4 border-ink-black/20 border-t-fighter-red rounded-full animate-spin;
+  }
+
+  /* Mobile spinner */
+  @media (max-width: 640px) {
+    .arcade-spinner {
+      @apply w-8 h-8 border-2;
+    }
   }
 
   /* Scrollbar Styling */
@@ -198,6 +316,69 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-fighter-red border-2 border-ink-black;
+  }
+
+  /* Mobile scrollbar - thinner */
+  @media (max-width: 640px) {
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+  }
+
+  /* ========================================
+     📱 MOBILE-SPECIFIC UTILITIES
+     ======================================== */
+  
+  /* Safe area padding utilities */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Bottom navigation spacing for mobile */
+  .bottom-nav-spacer {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 64px);
+  }
+
+  /* Touch-friendly container */
+  .touch-container {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Responsive grid for cards */
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+  }
+
+  /* Mobile-first flex direction */
+  .responsive-flex {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  /* Text size responsive */
+  .text-responsive-xl {
+    @apply text-2xl sm:text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  .text-responsive-lg {
+    @apply text-xl sm:text-2xl md:text-3xl;
+  }
+
+  .text-responsive-base {
+    @apply text-base sm:text-lg;
+  }
+
+  /* Container with max-width for readability */
+  .reading-container {
+    @apply max-w-prose mx-auto px-4 sm:px-6;
   }
 }
 
@@ -216,5 +397,58 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Prevent text selection on UI elements */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Smooth scroll snap */
+  .snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .snap-center {
+    scroll-snap-align: center;
+  }
+
+  /* Aspect ratio utilities for videos/images */
+  .aspect-video-responsive {
+    @apply aspect-video;
+  }
+
+  @media (max-width: 640px) {
+    .aspect-video-responsive {
+      aspect-ratio: 16/10;
+    }
+  }
+
+  /* Full bleed on mobile */
+  .full-bleed-mobile {
+    @apply -mx-4 sm:mx-0;
+  }
+
+  /* Sticky header with safe area */
+  .sticky-header {
+    @apply sticky top-0 z-50;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* PWA standalone mode adjustments */
+  @media (display-mode: standalone) {
+    .pwa-standalone {
+      /* Additional padding for standalone PWA */
+      padding-top: env(safe-area-inset-top);
+    }
+    
+    /* Hide elements that don't make sense in PWA */
+    .hide-in-pwa {
+      display: none !important;
+    }
   }
 }
