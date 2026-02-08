@@ -65,7 +65,7 @@ export default function CourseDetailPage() {
 
           if (loading) {
                     return (
-                              <div className="flex items-center justify-center min-h-screen bg-paper-pattern">
+                              <div className="flex items-center justify-center min-h-screen bg-white">
                                         <Loading text="LOADING MISSION DATA..." />
                               </div>
                     );
@@ -84,7 +84,7 @@ export default function CourseDetailPage() {
           const difficulty = difficultyConfig[course.difficulty] || difficultyConfig.beginner;
 
           return (
-                    <div className="min-h-screen bg-paper-pattern">
+                    <div className="min-h-screen bg-white">
                               {/* Top Bar */}
                               <div className="bg-ink-black text-white p-4 sticky top-0 z-50 border-b-4 border-fighter-red">
                                         <div className="container mx-auto flex items-center justify-between">

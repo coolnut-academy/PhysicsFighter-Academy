@@ -48,6 +48,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://physicsfighter.academy'),
   title: "Physics Fighter Academy - Train Your Mind",
   description: "Master physics through battle-tested courses and expert training",
   keywords: ["physics", "education", "learning", "courses", "thailand", "ฟิสิกส์", "เรียน", "คอร์ส"],

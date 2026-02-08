@@ -137,9 +137,7 @@ export default function CoursePreviewPage() {
 
                               {/* Course Hero */}
                               <div className="bg-ink-black text-white py-12 relative overflow-hidden">
-                                        <div className="pointer-events-none absolute inset-0 opacity-10"
-                                                  style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}
-                                        />
+
 
                                         <div className="max-w-7xl mx-auto px-4 relative z-10">
                                                   <div className="grid md:grid-cols-3 gap-8 items-start">

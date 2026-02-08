@@ -5,8 +5,8 @@
 @layer base {
   :root {
     /* 🥋 The Dojo - Light Theme (Arcade Edition) */
-    --background: 210 40% 98%;
-    /* Paper White */
+    --background: 0 0% 100%;
+    /* Pure White */
     --foreground: 0 0% 0%;
     /* Ink Black */
 
@@ -452,3 +452,4 @@
     }
   }
 }
+

@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface LogoProps {
@@ -29,13 +28,12 @@ export function Logo({ className, width, height, variant = 'default' }: LogoProp
 
   return (
     <div className={cn('relative flex items-center justify-center', sizeClasses[variant], className)}>
-      <Image
+      <img
         src="/logo/Physics Fighter ไม่มีพื้นหลัง.png"
         alt="Physics Fighter Academy"
         width={width || size.w}
         height={height || size.h}
         className="object-contain w-full h-full"
-        priority
       />
     </div>
   );
@@ -45,13 +43,12 @@ export function Logo({ className, width, height, variant = 'default' }: LogoProp
 export function LogoIcon({ className, size = 32, style }: { className?: string; size?: number; style?: React.CSSProperties }) {
   return (
     <div className={cn('relative inline-flex items-center justify-center', className)} style={style}>
-      <Image
+      <img
         src="/logo/Physics Fighter ไม่มีพื้นหลัง.png"
         alt="Physics Fighter Academy"
         width={size}
         height={size * 0.84}
         className="object-contain"
-        priority
       />
     </div>
   );

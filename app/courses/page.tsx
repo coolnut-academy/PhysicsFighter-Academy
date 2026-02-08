@@ -96,14 +96,14 @@ export default function CoursesPage() {
 
           if (loading) {
                     return (
-                              <div className="flex items-center justify-center min-h-screen bg-paper-pattern">
+                              <div className="flex items-center justify-center min-h-screen bg-white">
                                         <Loading text="LOADING STAGE..." />
                               </div>
                     );
           }
 
           return (
-                    <div className="min-h-screen bg-paper-pattern">
+                    <div className="min-h-screen bg-white">
                               {/* Top Bar */}
                               <div className="bg-ink-black text-white p-4 sticky top-0 z-50">
                                         <div className="container mx-auto flex items-center justify-between">
@@ -120,9 +120,7 @@ export default function CoursesPage() {
 
                               {/* Hero Section */}
                               <div className="bg-fighter-red text-white py-16 relative overflow-hidden">
-                                        <div className="absolute inset-0 opacity-10"
-                                                  style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}
-                                        />
+
                                         <div className="container mx-auto px-4 relative z-10 text-center">
                                                   <h1 className="text-5xl md:text-7xl font-heading mb-4 text-white drop-shadow-[4px_4px_0_rgba(0,0,0,1)] uppercase">
                                                             Training Ground

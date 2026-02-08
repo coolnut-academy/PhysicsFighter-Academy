@@ -194,7 +194,7 @@ export default function CoursePlayerPage() {
 
           if (loading) {
                     return (
-                              <div className="flex items-center justify-center min-h-screen bg-paper-pattern">
+                              <div className="flex items-center justify-center min-h-screen bg-white">
                                         <Loading text="LOADING BATTLE PLAN..." />
                               </div>
                     );
@@ -207,7 +207,7 @@ export default function CoursePlayerPage() {
           const timeRemaining = calculateTimeRemaining(enrollment);
 
           return (
-                    <div className="min-h-screen flex flex-col bg-paper-pattern">
+                    <div className="min-h-screen flex flex-col bg-white">
                               {/* Header */}
                               <div className="bg-ink-black text-white p-4 sticky top-0 z-50 border-b-4 border-fighter-red shadow-md">
                                         <div className="container mx-auto flex items-center justify-between">
@@ -309,7 +309,7 @@ export default function CoursePlayerPage() {
                                         </aside>
 
                                         {/* Content Area */}
-                                        <main className="flex-1 overflow-y-auto bg-paper-pattern p-4 md:p-8">
+                                        <main className="flex-1 overflow-y-auto bg-white p-4 md:p-8">
                                                   <div className="max-w-4xl mx-auto space-y-8">
                                                             {currentLesson ? (
                                                                       <>

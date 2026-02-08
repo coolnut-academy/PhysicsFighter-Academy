@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Course, COLLECTIONS } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Eye, Trash2, Search, ArrowLeft, Plus } from 'lucide-react';
+import { BookOpen, Eye, Trash2, Search, ArrowLeft, Plus, Edit3, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SuperAdminCoursesPage() {
+          const { toast } = useToast();
           const [loading, setLoading] = useState(true);
           const [courses, setCourses] = useState<Course[]>([]);
           const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +22,7 @@ export default function SuperAdminCoursesPage() {
 
           const fetchCourses = async () => {
                     try {
+                              setLoading(true);
                               const q = query(
                                         collection(db, COLLECTIONS.COURSES)
                               );
@@ -35,8 +38,59 @@ export default function SuperAdminCoursesPage() {
                               setCourses(coursesData);
                     } catch (error) {
                               console.error('Error fetching courses:', error);
+                              toast({
+                                        title: 'เกิดข้อผิดพลาด',
+                                        description: 'ไม่สามารถโหลดข้อมูลคอร์สได้',
+                                        variant: 'destructive',
+                              });
                     } finally {
                               setLoading(false);
+                    }
+          };
+
+          // ลบคอร์สทันที
+          const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
+                    if (!confirm(`คุณต้องการลบคอร์ส "${courseTitle}" หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้!`)) {
+                              return;
+                    }
+
+                    try {
+                              await deleteDoc(doc(db, COLLECTIONS.COURSES, courseId));
+                              toast({
+                                        title: 'สำเร็จ',
+                                        description: `ลบคอร์ส "${courseTitle}" เรียบร้อยแล้ว`,
+                              });
+                              fetchCourses();
+                    } catch (error: any) {
+                              toast({
+                                        title: 'เกิดข้อผิดพลาด',
+                                        description: error.message || 'ไม่สามารถลบคอร์สได้',
+                                        variant: 'destructive',
+                              });
+                    }
+          };
+
+          // เปลี่ยนสถานะ Publish/Draft ทันที
+          const handleTogglePublish = async (course: Course) => {
+                    const newStatus = !course.isPublished;
+                    const actionText = newStatus ? 'เผยแพร่' : 'ยกเลิกการเผยแพร่';
+
+                    try {
+                              await updateDoc(doc(db, COLLECTIONS.COURSES, course.id), {
+                                        isPublished: newStatus,
+                                        updatedAt: serverTimestamp(),
+                              });
+                              toast({
+                                        title: 'สำเร็จ',
+                                        description: `${actionText}คอร์ส "${course.title}" เรียบร้อยแล้ว`,
+                              });
+                              fetchCourses();
+                    } catch (error: any) {
+                              toast({
+                                        title: 'เกิดข้อผิดพลาด',
+                                        description: error.message || 'ไม่สามารถอัพเดทสถานะได้',
+                                        variant: 'destructive',
+                              });
                     }
           };
 
@@ -66,6 +120,23 @@ export default function SuperAdminCoursesPage() {
                                                   </h1>
                                         </div>
                                         <div className="flex items-center gap-4">
+                                                  <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                      fetchCourses();
+                                                                      toast({
+                                                                                title: 'รีเฟรชข้อมูล',
+                                                                                description: 'โหลดข้อมูลคอร์สจาก Firestore เรียบร้อยแล้ว',
+                                                                      });
+                                                            }}
+                                                            disabled={loading}
+                                                            className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black"
+                                                  >
+                                                            <span className="flex items-center gap-2">
+                                                                      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                                                      Sync ข้อมูล
+                                                            </span>
+                                                  </Button>
                                                   <Link href="/admin/courses/create">
                                                             <Button className="bg-fighter-red hover:bg-red-600 border-2 border-white text-white">
                                                                       <Plus className="w-4 h-4 mr-2" />
@@ -126,11 +197,37 @@ export default function SuperAdminCoursesPage() {
                                                                                                     </td>
                                                                                                     <td className="p-4">
                                                                                                               <div className="flex items-center gap-2">
+                                                                                                                        {/* ดู/แก้ไขคอร์ส */}
                                                                                                                         <Link href={`/admin/courses/${course.id}/edit`}>
-                                                                                                                                  <Button variant="outline" size="sm" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black">
-                                                                                                                                            <Eye className="w-4 h-4" />
+                                                                                                                                  <Button variant="outline" size="sm" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black" title="แก้ไขคอร์ส">
+                                                                                                                                            <Edit3 className="w-4 h-4" />
                                                                                                                                   </Button>
                                                                                                                         </Link>
+                                                                                                                        
+                                                                                                                        {/* เปลี่ยนสถานะ Publish/Draft */}
+                                                                                                                        <Button
+                                                                                                                                  variant="outline"
+                                                                                                                                  size="sm"
+                                                                                                                                  onClick={() => handleTogglePublish(course)}
+                                                                                                                                  className={`border-2 ${course.isPublished 
+                                                                                                                                            ? 'bg-green-600 border-green-400 text-white hover:bg-green-700' 
+                                                                                                                                            : 'bg-golden border-golden text-ink-black hover:bg-yellow-500'
+                                                                                                                                  }`}
+                                                                                                                                  title={course.isPublished ? 'ยกเลิกการเผยแพร่' : 'เผยแพร่คอร์ส'}
+                                                                                                                        >
+                                                                                                                                  {course.isPublished ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                                                                                                                        </Button>
+                                                                                                                        
+                                                                                                                        {/* ลบคอร์ส */}
+                                                                                                                        <Button
+                                                                                                                                  variant="destructive"
+                                                                                                                                  size="sm"
+                                                                                                                                  onClick={() => handleDeleteCourse(course.id, course.title)}
+                                                                                                                                  className="bg-red-600 hover:bg-red-700 border-2 border-red-400"
+                                                                                                                                  title="ลบคอร์ส"
+                                                                                                                        >
+                                                                                                                                  <Trash2 className="w-4 h-4" />
+                                                                                                                        </Button>
                                                                                                               </div>
                                                                                                     </td>
                                                                                           </tr>

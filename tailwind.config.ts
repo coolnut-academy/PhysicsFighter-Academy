@@ -101,7 +101,7 @@ const config: Config = {
           light: "#fbbf24",
         },
         paper: {
-          white: "#f8fafc",
+          white: "#ffffff",
           cream: "#fefce8",
         },
       },

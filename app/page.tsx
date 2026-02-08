@@ -125,23 +125,16 @@ export default function LandingPage() {
           🥋 HERO SECTION - Game Title Screen
           ======================================== */}
       <div className="relative overflow-hidden">
-        {/* Halftone Pattern Background */}
-        <div
-          className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px)`,
-            backgroundSize: '8px 8px',
-          }}
-        />
+
 
         <div className="container mx-auto px-4 py-8 relative z-10">
           {/* Navigation */}
           <nav className="flex justify-between items-center mb-0">
             <div className="flex items-center gap-3">
               <LogoIcon size={44} />
-              <h1 className="text-3xl font-bold tracking-wide">
+              <h1 className="text-xl font-bold tracking-wide">
                 <span className="text-cover-red">Physics</span>
-                <span className="text-cover-gray">Fight</span>
+                <span className="text-cover-gray">Figh</span>
                 <span className="text-cover-red">T</span>
                 <span className="text-cover-gray">er</span>
               </h1>
@@ -151,7 +144,7 @@ export default function LandingPage() {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading || isWaitingForUserData}
-                className="flex items-center gap-3 bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-lg border border-gray-300 shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                className="flex text-smitems-center gap-3 bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-lg border border-gray-300 shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {googleLoading || isWaitingForUserData ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -170,8 +163,17 @@ export default function LandingPage() {
 
           {/* Hero Content */}
           <div className="text-center max-w-5xl mx-auto py-5">
+            {/* Logo above headline */}
+            <div className="flex justify-center mb-4">
+              <img 
+                src="/logo/Physics Fighter ไม่มีพื้นหลัง.png" 
+                alt="Physics Fighter Academy"
+                className="h-24 md:h-32 w-auto object-contain"
+              />
+            </div>
+            
             {/* Main Headline - Cover FB Style */}
-            <h2 className="font-kanit font-bold text-7xl md:text-8xl lg:text-[9rem] uppercase mb-4 leading-none tracking-tight">
+            <h2 className="font-kanit font-bold text-5xl md:text-7xl lg:text-[9rem] uppercase mb-4 leading-none tracking-tight">
               <span className="text-cover-red">
                 พุ่งทะยาน
               </span>

@@ -46,22 +46,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-paper-white flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div
-        className="fixed inset-0 opacity-5 pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px)`,
-          backgroundSize: '8px 8px',
-        }}
-      />
+
 
       <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <LogoIcon size={56} />
           </div>
-          <CardTitle className="font-heading text-3xl">เข้าสู่สนามประลอง</CardTitle>
-          <p className="text-gray-600 mt-2">เข้าสู่ระบบด้วยบัญชี Google ของคุณ</p>
+          <CardTitle className="font-heading text-3xl">เข้าสู่ระบบ</CardTitle>
+          <p className="text-gray-600 mt-2">ด้วยบัญชี Google ของคุณ</p>
         </CardHeader>
         <CardContent>
           {error && (

@@ -46,14 +46,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-paper-white flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div
-        className="fixed inset-0 opacity-5 pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px)`,
-          backgroundSize: '8px 8px',
-        }}
-      />
+
 
       <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center">
@@ -116,7 +109,7 @@ export default function RegisterPage() {
             <p className="text-gray-600">
               มีบัญชีอยู่แล้ว?{' '}
               <Link href="/login" className="text-fighter-red font-bold hover:underline inline-flex items-center gap-1">
-                เข้าสู่ระบบ <ArrowRight className="w-4 h-4" />
+                เข้าสู่ระบบ <ArrowRight className="w-3 h-3" />
               </Link>
             </p>
           </div>

@@ -15,20 +15,16 @@ const nextConfig = {
       }
     ],
   },
-  // Disable Turbopack to use webpack for PWA compatibility
-  webpack: (config, { isServer }) => {
-    return config;
-  },
 };
 
 const pwaConfig = withPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
+  // Disable PWA in development - use Turbopack for fast dev
   disable: process.env.NODE_ENV === 'development',
   buildExcludes: [/middleware-manifest\.json$/],
   exclude: [
-    // add buildExcludes
     /app-build-manifest\.json$/,
     /react-loadable-manifest\.json$/,
   ],
@@ -40,18 +36,18 @@ const pwaConfig = withPWA({
         cacheName: 'offlineCache',
         expiration: {
           maxEntries: 200,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
+          maxAgeSeconds: 24 * 60 * 60
         }
       }
     },
     {
-      urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
+      urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font\.css)$/i,
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'static-font-assets',
         expiration: {
           maxEntries: 10,
-          maxAgeSeconds: 60 * 60 * 24 * 365 // 365 days
+          maxAgeSeconds: 60 * 60 * 24 * 365
         }
       }
     },
@@ -62,7 +58,7 @@ const pwaConfig = withPWA({
         cacheName: 'static-image-assets',
         expiration: {
           maxEntries: 64,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
+          maxAgeSeconds: 24 * 60 * 60
         }
       }
     },
@@ -73,7 +69,7 @@ const pwaConfig = withPWA({
         cacheName: 'next-image',
         expiration: {
           maxEntries: 64,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
+          maxAgeSeconds: 24 * 60 * 60
         }
       }
     },
@@ -84,7 +80,7 @@ const pwaConfig = withPWA({
         cacheName: 'next-static',
         expiration: {
           maxEntries: 64,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
+          maxAgeSeconds: 24 * 60 * 60
         }
       }
     }
