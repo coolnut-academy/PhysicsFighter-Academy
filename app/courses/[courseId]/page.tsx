@@ -192,10 +192,10 @@ export default function CourseDetailPage() {
                                                   <Link href="/courses">
                                                             <Button variant="outline" size="sm" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-black uppercase font-bold skew-x-[-10deg]">
                                                                       <ArrowLeft className="w-4 h-4 mr-2" />
-                                                                      Back to Stages
+                                                                      กลับหน้ารวมคอร์ส
                                                             </Button>
                                                   </Link>
-                                                  <div className="font-heading text-xl text-golden tracking-wider">MISSION BRIEFING</div>
+                                                  <div className="font-heading text-xl text-golden tracking-wider">รายละเอียดภารกิจ</div>
                                                   <div className="w-[100px]" /> {/* Spacer */}
                                         </div>
                               </div>
@@ -230,7 +230,7 @@ export default function CourseDetailPage() {
                                                                                 {/* Stats */}
                                                                                 <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 border-2 border-black -skew-x-6 font-bold uppercase text-sm">
                                                                                           <BookOpen className="w-4 h-4 text-fighter-red" />
-                                                                                          {course.totalLessons || 0} Lessons
+                                                                                          {course.totalLessons || 0} บทเรียน
                                                                                 </div>
                                                                                 <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 border-2 border-black -skew-x-6 font-bold uppercase text-sm">
                                                                                           <Clock className="w-4 h-4 text-golden" />
@@ -270,7 +270,7 @@ export default function CourseDetailPage() {
                                                             {/* What You'll Learn */}
                                                             <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_rgba(0,0,0,1)] relative">
                                                                       <div className="absolute -top-4 left-4 bg-golden text-ink-black border-2 border-black px-4 py-1 font-heading uppercase text-lg transform -skew-x-12 shadow-[2px_2px_0_rgba(0,0,0,1)]">
-                                                                                Mission Objectives
+                                                                                เป้าหมายภารกิจ
                                                                       </div>
                                                                       <div className="mt-4 grid md:grid-cols-2 gap-4">
                                                                                 {course.learningOutcomes?.map((outcome, index) => (
@@ -279,7 +279,7 @@ export default function CourseDetailPage() {
                                                                                                     <p className="font-bold text-gray-700">{outcome}</p>
                                                                                           </div>
                                                                                 )) || (
-                                                                                                    <p className="text-gray-500 italic">Objectives classified.</p>
+                                                                                                    <p className="text-gray-500 italic">ไม่มีข้อมูลเป้าหมาย</p>
                                                                                           )}
                                                                       </div>
                                                             </div>
@@ -287,7 +287,7 @@ export default function CourseDetailPage() {
                                                             {/* Course Modules */}
                                                             <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_rgba(0,0,0,1)] relative">
                                                                       <div className="absolute -top-4 left-4 bg-fighter-red text-white border-2 border-black px-4 py-1 font-heading uppercase text-lg transform -skew-x-12 shadow-[2px_2px_0_rgba(0,0,0,1)]">
-                                                                                Battle Plan (Curriculum)
+                                                                                แผนการรบ (เนื้อหาบทเรียน)
                                                                       </div>
 
                                                                       <div className="mt-6 space-y-6">
@@ -296,10 +296,10 @@ export default function CourseDetailPage() {
                                                                                                     <div key={module.id} className="border-2 border-black bg-gray-50 rounded-none">
                                                                                                               <div className="p-4 border-b-2 border-black bg-gray-100 flex justify-between items-center">
                                                                                                                         <h3 className="font-heading text-lg text-ink-black uppercase">
-                                                                                                                                  Stage {index + 1}: {module.title}
+                                                                                                                                  ด่านที่ {index + 1}: {module.title}
                                                                                                                         </h3>
                                                                                                                         <span className="text-xs font-bold uppercase bg-white border border-black px-2 py-1">
-                                                                                                                                  {module.lessons.length} Missions
+                                                                                                                                  {module.lessons.length} ภารกิจ
                                                                                                                         </span>
                                                                                                               </div>
                                                                                                               <div className="p-4 space-y-2">
@@ -328,13 +328,13 @@ export default function CourseDetailPage() {
                                                                                                                                                                 <DialogTrigger asChild>
                                                                                                                                                                           <Button size="sm" variant="outline" className="border-2 border-black text-fighter-red hover:bg-fighter-red hover:text-white uppercase font-bold text-xs"
                                                                                                                                                                                     onClick={() => setActivePreviewLesson(lesson)}>
-                                                                                                                                                                                    Preview
+                                                                                                                                                                                    ดูตัวอย่าง
                                                                                                                                                                           </Button>
                                                                                                                                                                 </DialogTrigger>
                                                                                                                                                                 <DialogContent className="bg-black border-4 border-fighter-red text-white p-0 overflow-hidden max-w-4xl">
                                                                                                                                                                           <DialogHeader className="p-4 bg-ink-black border-b-2 border-fighter-red">
                                                                                                                                                                                     <DialogTitle className="font-heading text-fighter-red uppercase tracking-wider">
-                                                                                                                                                                                              Preview: {lesson.title}
+                                                                                                                                                                                              ตัวอย่าง: {lesson.title}
                                                                                                                                                                                     </DialogTitle>
                                                                                                                                                                           </DialogHeader>
                                                                                                                                                                           <div className="aspect-video bg-black">
@@ -348,7 +348,7 @@ export default function CourseDetailPage() {
                                                                                                                                                                                               />
                                                                                                                                                                                     ) : (
                                                                                                                                                                                               <div className="w-full h-full flex items-center justify-center text-gray-500 font-mono">
-                                                                                                                                                                                                        VIDEO SIGNAL LOST
+                                                                                                                                                                                                        ไม่พบสัญญาณวิดีโอ
                                                                                                                                                                                               </div>
                                                                                                                                                                                     )}
                                                                                                                                                                           </div>
@@ -356,7 +356,7 @@ export default function CourseDetailPage() {
                                                                                                                                                       </Dialog>
                                                                                                                                             ) : (
                                                                                                                                                       <span className="text-xs font-bold uppercase text-gray-400 bg-gray-100 px-2 py-1 border border-gray-300">
-                                                                                                                                                                Locked
+                                                                                                                                                                ล็อค
                                                                                                                                                       </span>
                                                                                                                                             )}
                                                                                                                                   </div>
@@ -365,7 +365,7 @@ export default function CourseDetailPage() {
                                                                                                     </div>
                                                                                           ))
                                                                                 ) : (
-                                                                                          <p className="text-gray-500 font-bold text-center py-8">No missions available yet.</p>
+                                                                                          <p className="text-gray-500 font-bold text-center py-8">ยังไม่มีภารกิจในขณะนี้</p>
                                                                                 )}
                                                                       </div>
                                                             </div>
@@ -376,11 +376,11 @@ export default function CourseDetailPage() {
                                                             <div className="sticky top-24">
                                                                       <div className="bg-white border-4 border-black p-6 shadow-[12px_12px_0_rgba(0,0,0,1)] relative">
                                                                                 <div className="text-center mb-6">
-                                                                                          <p className="text-sm font-bold uppercase text-gray-500 mb-2">ACCESS PASS</p>
+                                                                                          <p className="text-sm font-bold uppercase text-gray-500 mb-2">บัตรผ่านเข้าเรียน</p>
                                                                                           <div className="text-4xl font-heading text-fighter-red">
                                                                                                     {formatCurrency(course.pricing.threeMonths)}
                                                                                           </div>
-                                                                                          <p className="text-xs font-bold uppercase text-gray-400">/ 3 MONTHS</p>
+                                                                                          <p className="text-xs font-bold uppercase text-gray-400">/ 3 เดือน</p>
                                                                                 </div>
 
                                                                                 <div className="space-y-4 mb-8">
@@ -391,7 +391,7 @@ export default function CourseDetailPage() {
                                                                                           >
                                                                                                     <Button className="w-full h-14 bg-fighter-red hover:bg-red-700 text-white border-2 border-black uppercase font-heading text-xl shadow-[4px_4px_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
                                                                                                               <Zap className="w-5 h-5 mr-2" />
-                                                                                                              Enroll Now
+                                                                                                              ลงทะเบียนเรียนทันที
                                                                                                     </Button>
                                                                                           </Link>
 
@@ -407,19 +407,19 @@ export default function CourseDetailPage() {
                                                                                 </div>
 
                                                                                 <div className="border-t-2 border-dashed border-gray-300 pt-6">
-                                                                                          <p className="font-bold uppercase text-sm mb-4">Pass Includes:</p>
+                                                                                          <p className="font-bold uppercase text-sm mb-4">สิ่งที่ได้รับ:</p>
                                                                                           <ul className="space-y-3">
                                                                                                     <li className="flex items-center gap-2 text-sm font-bold text-gray-600">
                                                                                                               <CheckCircle className="w-4 h-4 text-green-500" />
-                                                                                                              Full Access
+                                                                                                              เข้าถึงเนื้อหาทั้งหมด
                                                                                                     </li>
                                                                                                     <li className="flex items-center gap-2 text-sm font-bold text-gray-600">
                                                                                                               <CheckCircle className="w-4 h-4 text-green-500" />
-                                                                                                              All Resources
+                                                                                                              เอกสารประกอบการเรียน
                                                                                                     </li>
                                                                                                     <li className="flex items-center gap-2 text-sm font-bold text-gray-600">
                                                                                                               <CheckCircle className="w-4 h-4 text-green-500" />
-                                                                                                              Instructor Support
+                                                                                                              ถามตอบกับผู้สอน
                                                                                                     </li>
                                                                                           </ul>
                                                                                 </div>
@@ -428,6 +428,6 @@ export default function CourseDetailPage() {
                                                   </div>
                                         </div>
                               </div>
-                    </div>
+                    </div >
           );
 }

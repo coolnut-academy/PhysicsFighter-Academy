@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  BookOpen, 
-  GraduationCap, 
+import {
+  Home,
+  BookOpen,
+  GraduationCap,
   User,
   Trophy,
-  LayoutDashboard
+  LayoutDashboard,
+  Users as UsersIcon,
+  BarChart3,
+  Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,26 +35,57 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/settings', label: 'ตั้งค่า', icon: User },
 ];
 
+const superAdminNavItems: NavItem[] = [
+  { href: '/super-admin/dashboard', label: 'หน้าหลัก', icon: LayoutDashboard },
+  { href: '/super-admin/users', label: 'ผู้ใช้', icon: UsersIcon },
+  { href: '/super-admin/courses', label: 'คอร์ส', icon: BookOpen },
+  { href: '/super-admin/analytics', label: 'สถิติ', icon: BarChart3 },
+];
+
 interface BottomNavProps {
   userRole?: 'student' | 'admin' | 'super-admin';
 }
 
 export function BottomNav({ userRole = 'student' }: BottomNavProps) {
   const pathname = usePathname();
-  
+
   // Don't show bottom nav on certain pages
   const hiddenPaths = ['/login', '/register', '/checkout'];
   if (hiddenPaths.some(path => pathname.startsWith(path))) {
     return null;
   }
 
-  // Don't show on admin pages except for specific admin paths
-  const isAdminPage = pathname.startsWith('/admin') || pathname.startsWith('/super-admin');
-  
-  // Choose nav items based on role and current page
+  // Choose nav items based on role
+  // Logic: If role is admin/super-admin, show their nav GLOBALLY?
+  // Or only on their pages?
+  // User said "adjust PWA bottom bar... by role because each role has different bar".
+  // Usually PWA Bottom Nav replaces browser nav, so it should be persistent based on ROLE.
+
   let navItems = studentNavItems;
-  if (isAdminPage && userRole === 'admin') {
+
+  if (userRole === 'admin') {
     navItems = adminNavItems;
+  } else if (userRole === 'super-admin') {
+    navItems = superAdminNavItems;
+  }
+
+  // Existing logic checked `isAdminPage`. I prefer checking Role primarily.
+  // Because if I am Admin on homepage, I might want Admin Nav?
+  // But usually Admins also have "Student View".
+  // Let's stick to: If on Admin Routes -> Admin Nav. If on Student Routes -> Student Nav.
+  // But user said "adjust by role".
+
+  const isAdminPage = pathname.startsWith('/admin');
+  const isSuperAdminPage = pathname.startsWith('/super-admin');
+
+  if (userRole === 'admin' && isAdminPage) {
+    navItems = adminNavItems;
+  } else if (userRole === 'super-admin' && isSuperAdminPage) {
+    navItems = superAdminNavItems;
+  } else if (userRole !== 'student' && !isAdminPage && !isSuperAdminPage) {
+    // User is admin but viewing student pages?
+    // Keep student nav items.
+    navItems = studentNavItems;
   }
 
   return (
@@ -67,8 +101,8 @@ export function BottomNav({ userRole = 'student' }: BottomNavProps) {
               href={item.href}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full min-w-0 transition-colors duration-200",
-                isActive 
-                  ? "text-fighter-red" 
+                isActive
+                  ? "text-fighter-red"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -112,7 +146,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ title, showBack = true, rightAction }: MobileHeaderProps) {
   const pathname = usePathname();
-  
+
   return (
     <header className="sticky top-0 z-40 bg-white border-b-2 border-ink-black sm:hidden safe-area-top">
       <div className="flex items-center justify-between h-14 px-4">

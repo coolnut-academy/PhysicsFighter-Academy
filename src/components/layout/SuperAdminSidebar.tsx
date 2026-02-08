@@ -24,7 +24,7 @@ export function SuperAdminSidebar() {
           const pathname = usePathname();
 
           return (
-                    <aside className="w-64 border-r-4 border-golden bg-ink-black min-h-screen">
+                    <aside className="hidden lg:block w-64 border-r-4 border-golden bg-ink-black min-h-screen">
                               <nav className="p-4 space-y-2">
                                         {sidebarItems.map((item) => {
                                                   const Icon = item.icon;

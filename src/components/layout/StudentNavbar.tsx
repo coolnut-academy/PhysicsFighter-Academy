@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-import { BookOpen, GraduationCap, LogOut, User, Trophy } from 'lucide-react';
+import { BookOpen, GraduationCap, LogOut, User, Trophy, Menu } from 'lucide-react';
 import { LogoIcon } from '@/components/ui/Logo';
 import { cn } from '@/lib/utils';
 import {
@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
 
 const navItems = [
-          { href: '/dashboard', label: 'หน้าหลัก', icon: GraduationCap },
+          { href: '/learn/dashboard', label: 'หน้าแรก', icon: GraduationCap },
           { href: '/courses', label: 'ค้นหาคอร์ส', icon: BookOpen },
           { href: '/my-enrollments', label: 'คอร์สของฉัน', icon: Trophy },
 ];
@@ -38,92 +38,78 @@ export function StudentNavbar() {
           };
 
           return (
-                    <nav className="sticky top-0 z-50 bg-white border-b-4 border-ink-black">
-                              <div className="container mx-auto px-4">
-                                        <div className="flex items-center justify-between h-16">
-                                                  {/* 🥋 Logo */}
-                                                  <Link href="/dashboard" className="flex items-center gap-3">
-                                                            <LogoIcon size={36} />
-                                                            <span className="text-xl font-bold">
-                                                                      <span className="text-cover-red">Physics</span>
-                                                                      <span className="text-cover-gray">Fight</span>
-                                                                      <span className="text-cover-gray">Ter</span>
-                                                            </span>
-                                                  </Link>
+                    <nav className="sticky top-0 z-50 bg-white border-b-4 border-ink-black h-16">
+                              <div className="container mx-auto px-4 h-full">
+                                        <div className="flex items-center justify-between h-full">
+                                                  <div className="flex items-center gap-4">
+                                                            {/* 🍔 Hamburger Menu (Mobile Only) */}
+                                                            <div className="lg:hidden">
+                                                                      <DropdownMenu>
+                                                                                <DropdownMenuTrigger className="p-2 -ml-2 rounded-lg hover:bg-gray-100 focus:outline-none">
+                                                                                          <Menu className="w-6 h-6 text-ink-black" />
+                                                                                </DropdownMenuTrigger>
+                                                                                <DropdownMenuContent align="start" className="w-56 bg-white border-2 border-ink-black rounded-xl p-2 mt-2 ml-2">
+                                                                                          {navItems.map((item) => {
+                                                                                                    const Icon = item.icon;
+                                                                                                    const isActive = pathname === item.href;
+                                                                                                    return (
+                                                                                                              <DropdownMenuItem key={item.href} asChild>
+                                                                                                                        <Link
+                                                                                                                                  href={item.href}
+                                                                                                                                  className={cn(
+                                                                                                                                            "flex items-center gap-3 px-3 py-2 rounded-lg font-bold text-sm uppercase mb-1",
+                                                                                                                                            isActive ? "bg-fighter-red text-white" : "text-ink-black hover:bg-gray-100"
+                                                                                                                                  )}
+                                                                                                                        >
+                                                                                                                                  <Icon className="w-4 h-4" />
+                                                                                                                                  {item.label}
+                                                                                                                        </Link>
+                                                                                                              </DropdownMenuItem>
+                                                                                                    );
+                                                                                          })}
+                                                                                          <DropdownMenuSeparator className="bg-gray-200" />
+                                                                                          <DropdownMenuItem
+                                                                                                    onClick={handleLogout}
+                                                                                                    className="flex items-center gap-3 px-3 py-2 rounded-lg font-bold text-sm uppercase text-red-600 hover:bg-red-50 cursor-pointer"
+                                                                                          >
+                                                                                                    <LogOut className="w-4 h-4" />
+                                                                                                    ออกจากระบบ
+                                                                                          </DropdownMenuItem>
+                                                                                </DropdownMenuContent>
+                                                                      </DropdownMenu>
+                                                            </div>
 
-                                                  {/* Navigation Links */}
-                                                  <div className="hidden md:flex items-center gap-2">
-                                                            {navItems.map((item) => {
-                                                                      const Icon = item.icon;
-                                                                      const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-
-                                                                      return (
-                                                                                <Link
-                                                                                          key={item.href}
-                                                                                          href={item.href}
-                                                                                          className={cn(
-                                                                                                    'px-4 py-2 font-bold uppercase text-sm transition-all rounded-xl border-2',
-                                                                                                    isActive
-                                                                                                              ? 'bg-fighter-red text-white border-ink-black shadow-md'
-                                                                                                              : 'bg-white text-ink-black border-transparent hover:border-ink-black hover:shadow-sm'
-                                                                                          )}
-                                                                                >
-                                                                                          <span className="flex items-center gap-2">
-                                                                                                    <Icon className="w-4 h-4" />
-                                                                                                    {item.label}
-                                                                                          </span>
-                                                                                </Link>
-                                                                      );
-                                                            })}
+                                                            {/* 🥋 Logo */}
+                                                            <Link href="/dashboard" className="flex items-center gap-3">
+                                                                      <LogoIcon size={32} />
+                                                                      <span className="text-xl font-bold section-title text-ink-black hidden sm:inline-block">
+                                                                                <span className="text-fighter-red">Physics</span>
+                                                                                <span className="text-ink-black">Fighter</span>
+                                                                      </span>
+                                                            </Link>
                                                   </div>
+
+                                                  {/* Desktop Nav Links - HIDDEN now as we use Sidebar */}
+                                                  {/* <div className="hidden lg:flex items-center gap-2"> ... </div> */}
 
                                                   {/* User Dropdown */}
                                                   <div className="flex items-center gap-4">
-                                                            <DropdownMenu>
-                                                                      <DropdownMenuTrigger className="focus:outline-none">
-                                                                                <div className="flex items-center gap-2 px-3 py-2 border-2 border-ink-black bg-white hover:shadow-md transition-all rounded-xl">
-                                                                                          <Avatar className="w-8 h-8 border-2 border-ink-black rounded-full">
-                                                                                                    <AvatarImage src={user?.profile.avatarUrl} />
-                                                                                                    <AvatarFallback className="bg-fighter-red text-white font-bold">
-                                                                                                              {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}
-                                                                                                    </AvatarFallback>
-                                                                                          </Avatar>
-                                                                                          <span style={{ transform: 'skewX(3deg)' }} className="font-bold uppercase text-sm hidden sm:block">
-                                                                                                    {user?.profile.firstName}
-                                                                                          </span>
-                                                                                </div>
-                                                                      </DropdownMenuTrigger>
-                                                                      <DropdownMenuContent align="end" className="w-56 bg-white border-2 border-ink-black rounded-xl p-0">
-                                                                                <DropdownMenuLabel className="p-4 border-b-2 border-ink-black">
-                                                                                          <div className="flex items-center gap-3">
-                                                                                                    <Avatar className="w-10 h-10 border-2 border-ink-black rounded-full">
-                                                                                                              <AvatarImage src={user?.profile.avatarUrl} />
-                                                                                                              <AvatarFallback className="bg-fighter-red text-white font-bold">
-                                                                                                                        {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}
-                                                                                                              </AvatarFallback>
-                                                                                                    </Avatar>
-                                                                                                    <div>
-                                                                                                              <p className="font-bold">{user?.profile.firstName} {user?.profile.lastName}</p>
-                                                                                                              <p className="text-sm text-gray-500">{user?.profile.email}</p>
-                                                                                                    </div>
-                                                                                          </div>
-                                                                                </DropdownMenuLabel>
-                                                                                <DropdownMenuItem asChild>
-                                                                                          <Link href="/profile" className="flex items-center gap-2 cursor-pointer font-bold uppercase text-sm p-3">
-                                                                                                    <User className="w-4 h-4" />
-                                                                                                    <span>โปรไฟล์</span>
-                                                                                          </Link>
-                                                                                </DropdownMenuItem>
-                                                                                <DropdownMenuSeparator className="bg-ink-black" />
-                                                                                <DropdownMenuItem
-                                                                                          onClick={handleLogout}
-                                                                                          className="flex items-center gap-2 cursor-pointer font-bold uppercase text-sm text-fighter-red focus:text-fighter-red focus:bg-red-50 p-3"
-                                                                                >
-                                                                                          <LogOut className="w-4 h-4" />
-                                                                                          <span>ออกจากระบบ</span>
-                                                                                </DropdownMenuItem>
-                                                                      </DropdownMenuContent>
-                                                            </DropdownMenu>
+                                                            <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 border-2 border-ink-black bg-white rounded-xl shadow-sm">
+                                                                      <span className="font-bold uppercase text-xs truncate max-w-[100px]">
+                                                                                {user?.profile.firstName}
+                                                                      </span>
+                                                                      <div className="w-px h-6 bg-gray-200"></div>
+                                                                      <span className="text-xs text-gray-500 font-medium">นักเรียน</span>
+                                                            </div>
+
+                                                            <Link href="/profile">
+                                                                      <Avatar className="w-9 h-9 border-2 border-ink-black rounded-full cursor-pointer hover:scale-105 transition-transform">
+                                                                                <AvatarImage src={user?.profile.avatarUrl} />
+                                                                                <AvatarFallback className="bg-fighter-red text-white font-bold text-xs">
+                                                                                          {user?.profile && getInitials(user.profile.firstName, user.profile.lastName)}
+                                                                                </AvatarFallback>
+                                                                      </Avatar>
+                                                            </Link>
                                                   </div>
                                         </div>
                               </div>

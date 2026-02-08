@@ -1,9 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Added usePathname
 import { useAuthStore } from '@/store/useAuthStore';
-import { LogOut, User, Flame } from 'lucide-react';
+import {
+          LogOut,
+          User,
+          Flame,
+          Menu, // Added
+          LayoutDashboard, // Added
+          BookOpen, // Added
+          Receipt, // Added
+          DollarSign, // Added
+          Settings // Added
+} from 'lucide-react';
 import { LogoIcon } from '@/components/ui/Logo';
 import {
           DropdownMenu,
@@ -15,10 +25,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
+import { cn } from '@/lib/utils'; // Import cn
+
+const navItems = [
+          { href: '/admin/dashboard', label: 'ห้องบัญชาการ', icon: LayoutDashboard },
+          { href: '/admin/courses', label: 'คอร์สของฉัน', icon: BookOpen },
+          { href: '/admin/payments', label: 'สลิปชำระเงิน', icon: Receipt },
+          { href: '/admin/revenue', label: 'รายได้', icon: DollarSign },
+          { href: '/admin/settings', label: 'ตั้งค่า', icon: Settings },
+];
 
 export function AdminNavbar() {
           const router = useRouter();
           const { user, logout } = useAuthStore();
+          const pathname = usePathname(); // Use usePathname hook
 
           const handleLogout = async () => {
                     try {
@@ -33,21 +53,51 @@ export function AdminNavbar() {
                     <nav className="sticky top-0 z-50 bg-white border-b-4 border-ink-black">
                               <div className="px-6">
                                         <div className="flex items-center justify-between h-16">
-                                                  {/* 🥋 Arcade Logo */}
-                                                  <Link href="/admin/dashboard" className="flex items-center gap-3">
-                                                            <LogoIcon size={36} />
-                                                            <div>
-                                                                      <span className="text-xl font-bold tracking-wide">
-                                                                                <span className="text-cover-red">Physics</span>
-                                                                                <span className="text-cover-gray">Fight</span>
-                                                                                <span className="text-cover-gray">Ter</span>
-                                                                      </span>
-                                                                      <div className="flex items-center gap-1">
-                                                                                <Flame className="w-3 h-3 text-fighter-red" />
-                                                                                <span className="text-xs font-bold uppercase text-fighter-red">ผู้สอน</span>
-                                                                      </div>
+                                                  <div className="flex items-center gap-4">
+                                                            {/* 🍔 Hamburger Menu (Mobile Only) */}
+                                                            <div className="lg:hidden">
+                                                                      <DropdownMenu>
+                                                                                <DropdownMenuTrigger className="p-2 -ml-2 rounded-lg hover:bg-gray-100 focus:outline-none">
+                                                                                          <Menu className="w-6 h-6 text-ink-black" />
+                                                                                </DropdownMenuTrigger>
+                                                                                <DropdownMenuContent align="start" className="w-56 bg-white border-2 border-ink-black rounded-xl p-2 mt-2">
+                                                                                          {navItems.map((item) => {
+                                                                                                    const Icon = item.icon;
+                                                                                                    return (
+                                                                                                              <DropdownMenuItem key={item.href} asChild>
+                                                                                                                        <Link
+                                                                                                                                  href={item.href}
+                                                                                                                                  className={cn(
+                                                                                                                                            "flex items-center gap-3 px-3 py-2 rounded-lg font-bold text-sm uppercase mb-1 text-ink-black hover:bg-gray-100 cursor-pointer",
+                                                                                                                                            pathname === item.href && "bg-gray-100" // Active state
+                                                                                                                                  )}
+                                                                                                                        >
+                                                                                                                                  <Icon className="w-4 h-4" />
+                                                                                                                                  {item.label}
+                                                                                                                        </Link>
+                                                                                                              </DropdownMenuItem>
+                                                                                                    );
+                                                                                          })}
+                                                                                </DropdownMenuContent>
+                                                                      </DropdownMenu>
                                                             </div>
-                                                  </Link>
+
+                                                            {/* 🥋 Arcade Logo */}
+                                                            <Link href="/admin/dashboard" className="flex items-center gap-3">
+                                                                      <LogoIcon size={36} />
+                                                                      <div>
+                                                                                <span className="text-xl font-bold tracking-wide">
+                                                                                          <span className="text-cover-red">Physics</span>
+                                                                                          <span className="text-cover-gray">Fight</span>
+                                                                                          <span className="text-cover-gray">Ter</span>
+                                                                                </span>
+                                                                                <div className="flex items-center gap-1">
+                                                                                          <Flame className="w-3 h-3 text-fighter-red" />
+                                                                                          <span className="text-xs font-bold uppercase text-fighter-red">ผู้สอน</span>
+                                                                                </div>
+                                                                      </div>
+                                                            </Link>
+                                                  </div>
 
                                                   {/* User Dropdown */}
                                                   <div className="flex items-center gap-4">
