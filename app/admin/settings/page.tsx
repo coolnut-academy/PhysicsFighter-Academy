@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Settings, CreditCard, Bell, Save, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase/config';
 import { COLLECTIONS } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { Trash2, ImageIcon } from 'lucide-react'; // Added for QR Code upload UI
 
 export default function AdminSettingsPage() {
           const { user, setUser } = useAuthStore();
@@ -20,7 +22,23 @@ export default function AdminSettingsPage() {
                     accountNumber: user?.bankDetails?.accountNumber || '',
                     accountName: user?.bankDetails?.accountName || '',
                     promptPayId: user?.bankDetails?.promptPayId || '',
+                    qrCodeUrl: user?.bankDetails?.qrCodeUrl || '',
           });
+
+          const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+          const [qrCodePreview, setQrCodePreview] = useState<string>(user?.bankDetails?.qrCodeUrl || '');
+
+          const handleQrCodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                              setQrCodeFile(file);
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                        setQrCodePreview(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                    }
+          };
 
           const handleSubmit = async (e: React.FormEvent) => {
                     e.preventDefault();
@@ -28,6 +46,17 @@ export default function AdminSettingsPage() {
                     
                     setLoading(true);
                     try {
+                              let finalQrCodeUrl = bankDetails.qrCodeUrl;
+
+                              if (qrCodeFile) {
+                                        const storageRef = ref(
+                                                  storage,
+                                                  `users/${user.id}/qrcode_${Date.now()}_${qrCodeFile.name}`
+                                        );
+                                        await uploadBytes(storageRef, qrCodeFile);
+                                        finalQrCodeUrl = await getDownloadURL(storageRef);
+                              }
+                              
                               // Update bank details in Firestore
                               const userRef = doc(db, COLLECTIONS.USERS, user.id);
                               await updateDoc(userRef, {
@@ -36,6 +65,7 @@ export default function AdminSettingsPage() {
                                                   accountNumber: bankDetails.accountNumber,
                                                   accountName: bankDetails.accountName,
                                                   promptPayId: bankDetails.promptPayId,
+                                                  qrCodeUrl: finalQrCodeUrl,
                                         },
                                         updatedAt: serverTimestamp(),
                               });
@@ -48,6 +78,7 @@ export default function AdminSettingsPage() {
                                                   accountNumber: bankDetails.accountNumber,
                                                   accountName: bankDetails.accountName,
                                                   promptPayId: bankDetails.promptPayId,
+                                                  qrCodeUrl: finalQrCodeUrl,
                                         },
                               });
                               
@@ -134,6 +165,50 @@ export default function AdminSettingsPage() {
                                                                                           className="arcade-input"
                                                                                           placeholder="เช่น 0812345678"
                                                                                 />
+                                                                      </div>
+
+                                                                      <div>
+                                                                                <label className="block text-sm font-bold uppercase mb-2">QR Code ชำระเงิน (ทางเลือก)</label>
+                                                                                <div className="mt-2 text-center">
+                                                                                          {qrCodePreview ? (
+                                                                                                    <div className="relative w-full max-w-xs mx-auto aspect-square rounded-lg overflow-hidden border-2 border-ink-black bg-white">
+                                                                                                              <img
+                                                                                                                        src={qrCodePreview}
+                                                                                                                        alt="QR Code preview"
+                                                                                                                        className="w-full h-full object-contain p-2"
+                                                                                                              />
+                                                                                                              <Button
+                                                                                                                        type="button"
+                                                                                                                        variant="destructive"
+                                                                                                                        size="sm"
+                                                                                                                        className="absolute top-2 right-2"
+                                                                                                                        onClick={() => {
+                                                                                                                                  setQrCodeFile(null);
+                                                                                                                                  setQrCodePreview('');
+                                                                                                                                  setBankDetails((prev) => ({ ...prev, qrCodeUrl: '' }));
+                                                                                                                        }}
+                                                                                                              >
+                                                                                                                        <Trash2 className="w-4 h-4" />
+                                                                                                              </Button>
+                                                                                                    </div>
+                                                                                          ) : (
+                                                                                                    <label
+                                                                                                              htmlFor="qrCode"
+                                                                                                              className="flex flex-col items-center justify-center w-full max-w-xs mx-auto aspect-square border-2 border-dashed border-ink-black rounded-lg cursor-pointer hover:border-fighter-red transition-all bg-gray-50"
+                                                                                                    >
+                                                                                                              <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
+                                                                                                              <p className="text-sm font-bold text-gray-600">คลิกเพื่ออัพโหลด QR Code</p>
+                                                                                                              <p className="text-xs text-gray-400 mt-1">เพื่อให้ผู้เรียนสามารถแสกนจ่ายเงินได้ง่ายขึ้น</p>
+                                                                                                              <input
+                                                                                                                        id="qrCode"
+                                                                                                                        type="file"
+                                                                                                                        accept="image/*"
+                                                                                                                        className="hidden"
+                                                                                                                        onChange={handleQrCodeChange}
+                                                                                                              />
+                                                                                                    </label>
+                                                                                          )}
+                                                                                </div>
                                                                       </div>
 
                                                                       <Button type="submit" className="w-full" disabled={loading}>
