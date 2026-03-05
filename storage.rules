@@ -57,5 +57,15 @@ service firebase.storage {
       // Only owner can upload
       allow write: if isAuthenticated() && isOwner(userId);
     }
+
+    // User profile images and other user data
+    // Path: users/{userId}/{filename}
+    match /users/{userId}/{allPaths=**} {
+      // Anyone can read (for avatars/qr codes stored here)
+      allow read: if true;
+      
+      // Only owner can upload their own data
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
   }
 }
