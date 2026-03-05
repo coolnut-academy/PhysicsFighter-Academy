@@ -518,10 +518,10 @@ export default function EditCoursePage() {
                                 <Input
                                     type="number"
                                     min="0"
-                                    value={formData.pricing.threeMonths || ''}
+                                    value={formData.pricing.threeMonths ?? ''}
                                     onChange={(e) => setFormData({
                                         ...formData,
-                                        pricing: { ...formData.pricing, threeMonths: parseInt(e.target.value) || 0 },
+                                        pricing: { ...formData.pricing, threeMonths: e.target.value === '' ? 0 : parseInt(e.target.value) },
                                     })}
                                     className="arcade-input"
                                     required
@@ -532,10 +532,10 @@ export default function EditCoursePage() {
                                 <Input
                                     type="number"
                                     min="0"
-                                    value={formData.pricing.sixMonths || ''}
+                                    value={formData.pricing.sixMonths ?? ''}
                                     onChange={(e) => setFormData({
                                         ...formData,
-                                        pricing: { ...formData.pricing, sixMonths: parseInt(e.target.value) || 0 },
+                                        pricing: { ...formData.pricing, sixMonths: e.target.value === '' ? 0 : parseInt(e.target.value) },
                                     })}
                                     className="arcade-input"
                                     required
@@ -546,10 +546,10 @@ export default function EditCoursePage() {
                                 <Input
                                     type="number"
                                     min="0"
-                                    value={formData.pricing.twelveMonths || ''}
+                                    value={formData.pricing.twelveMonths ?? ''}
                                     onChange={(e) => setFormData({
                                         ...formData,
-                                        pricing: { ...formData.pricing, twelveMonths: parseInt(e.target.value) || 0 },
+                                        pricing: { ...formData.pricing, twelveMonths: e.target.value === '' ? 0 : parseInt(e.target.value) },
                                     })}
                                     className="arcade-input"
                                     required

@@ -470,13 +470,13 @@ export default function CreateCoursePage() {
                                     id="price3m"
                                     type="number"
                                     min="0"
-                                    value={formData.pricing.threeMonths || ''}
+                                    value={formData.pricing.threeMonths ?? ''}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
                                             pricing: {
                                                 ...formData.pricing,
-                                                threeMonths: parseInt(e.target.value) || 0,
+                                                threeMonths: e.target.value === '' ? 0 : parseInt(e.target.value),
                                             },
                                         })
                                     }
@@ -491,13 +491,13 @@ export default function CreateCoursePage() {
                                     id="price6m"
                                     type="number"
                                     min="0"
-                                    value={formData.pricing.sixMonths || ''}
+                                    value={formData.pricing.sixMonths ?? ''}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
                                             pricing: {
                                                 ...formData.pricing,
-                                                sixMonths: parseInt(e.target.value) || 0,
+                                                sixMonths: e.target.value === '' ? 0 : parseInt(e.target.value),
                                             },
                                         })
                                     }
@@ -512,13 +512,13 @@ export default function CreateCoursePage() {
                                     id="price12m"
                                     type="number"
                                     min="0"
-                                    value={formData.pricing.twelveMonths || ''}
+                                    value={formData.pricing.twelveMonths ?? ''}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
                                             pricing: {
                                                 ...formData.pricing,
-                                                twelveMonths: parseInt(e.target.value) || 0,
+                                                twelveMonths: e.target.value === '' ? 0 : parseInt(e.target.value),
                                             },
                                         })
                                     }
