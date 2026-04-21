@@ -123,7 +123,7 @@ export default function AdminDashboard() {
             title: 'Active Students',
             value: dashboardStats.activeStudentsCount,
             icon: Users,
-            href: '/admin/courses',
+            href: '/admin/students',
             color: 'neon-cyan',
         },
     ];

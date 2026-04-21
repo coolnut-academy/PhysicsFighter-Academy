@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase/config';
-import { useAuthStore } from '@/store/useAuthStore';
-import { Course, User, COLLECTIONS, DurationMonths, PaymentStatus, EnrollmentStatus } from '@/types';
+import { Course, User, COLLECTIONS, DurationMonths, PaymentStatus, EnrollmentStatus, Enrollment } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +37,7 @@ export default function CheckoutPage() {
 
     const [course, setCourse] = useState<Course | null>(null);
     const [courseOwner, setCourseOwner] = useState<User | null>(null);
+    const [existingEnrollment, setExistingEnrollment] = useState<Enrollment | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -115,6 +115,27 @@ export default function CheckoutPage() {
                 }
 
                 setCourseOwner(ownerData);
+            }
+
+            // Fetch existing pending enrollment using an already indexed query pattern
+            if (user) {
+                const pendingQ = query(
+                    collection(db, COLLECTIONS.ENROLLMENTS),
+                    where('studentId', '==', user.id),
+                    where('courseId', '==', courseId),
+                    where('status', '==', 'active')
+                );
+                const pendingSnap = await getDocs(pendingQ);
+                
+                // Filter locally to avoid "The query requires an index" inspect error
+                const pendingDoc = pendingSnap.docs.find(doc => {
+                    const data = doc.data();
+                    return data.accessGranted === false && (!data.paymentSlipId || data.paymentSlipId === '');
+                });
+
+                if (pendingDoc) {
+                    setExistingEnrollment({ id: pendingDoc.id, ...pendingDoc.data() } as Enrollment);
+                }
             }
 
             // Set initial price
@@ -233,29 +254,49 @@ export default function CheckoutPage() {
             const expiresAt = new Date(startDate);
             expiresAt.setMonth(expiresAt.getMonth() + selectedDuration);
 
-            // Create enrollment document (accessGranted: false if paid, true if free)
+            // 24 Hour Bonus Check (+30 Days)
+            let gotBonus = false;
+            if (existingEnrollment && existingEnrollment.paymentDeadline) {
+                const deadline = existingEnrollment.paymentDeadline instanceof Timestamp 
+                    ? existingEnrollment.paymentDeadline.toDate() 
+                    : new Date(existingEnrollment.paymentDeadline as any);
+                if (startDate <= deadline) {
+                    expiresAt.setDate(expiresAt.getDate() + 30);
+                    gotBonus = true;
+                }
+            }
+
+            // Create or update enrollment document
             const enrollmentData = {
                 courseId: course.id,
                 studentId: user.id,
                 ownerId: course.ownerId,
-                startDate: serverTimestamp(), // Will be start date
-                expiresAt: expiresAt, // Calculated expiration
+                startDate: serverTimestamp(), // Wait, actually should be serverTimestamp, but for calculating expiresAt we made it locally
+                expiresAt: expiresAt, 
                 selectedDuration: selectedDuration,
                 status: EnrollmentStatus.ACTIVE, // Exists but pending access
                 accessGranted: selectedPrice === 0, // Pending approval if paid, granted if free
                 paymentSlipId: paymentSlipId,
                 pricePaid: selectedPrice === 0 ? 0 : paymentData.amount,
-                progress: [],
-                overallProgress: 0,
-                createdAt: serverTimestamp(),
+                progress: existingEnrollment?.progress || [],
+                overallProgress: existingEnrollment?.overallProgress || 0,
                 updatedAt: serverTimestamp(),
             };
 
-            await addDoc(collection(db, COLLECTIONS.ENROLLMENTS), enrollmentData);
+            if (existingEnrollment) {
+                await updateDoc(doc(db, COLLECTIONS.ENROLLMENTS, existingEnrollment.id), enrollmentData);
+            } else {
+                await addDoc(collection(db, COLLECTIONS.ENROLLMENTS), {
+                    ...enrollmentData,
+                    createdAt: serverTimestamp(),
+                });
+            }
 
             toast({
-                title: 'Success!',
-                description: selectedPrice === 0 ? 'Enrolled successfully!' : 'Payment slip submitted. Course is now pending approval.',
+                title: selectedPrice === 0 ? 'Success!' : 'ส่งสลิปชำระเงินสำเร็จ',
+                description: selectedPrice === 0 
+                  ? 'Enrolled successfully!' 
+                  : (gotBonus ? 'รอแอดมินอนุมัติ (คุณได้รับโบนัสวันเรียนเพิ่ม 30 วันจากการชำระไว!)' : 'คอร์สอยู่ในระหว่างรออนุมัติ'),
             });
 
             if (selectedPrice === 0) {
@@ -296,6 +337,11 @@ export default function CheckoutPage() {
                     <div>
                         <h1 className="text-4xl font-bold text-gradient">Checkout</h1>
                         <p className="text-dark-text-secondary mt-1">{course.title}</p>
+                        {currentStep === 'payment' && existingEnrollment?.paymentDeadline && (
+                            <div className="mt-4 inline-block bg-fighter-red/10 border-2 border-fighter-red/50 text-fighter-red p-2 font-bold transform -skew-x-6 text-sm">
+                                🔔 โบนัสพิเศษ: ชำระเงินภายในเวลา <CountdownTimer deadline={existingEnrollment.paymentDeadline} /> รับเพิ่ม 30 วันฟรี!
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -596,6 +642,36 @@ function PaymentStep({
                 </Button>
             </div>
         </Card>
+    );
+}
+
+// Countdown UI for active pending enrollment
+function CountdownTimer({ deadline }: { deadline: any }) {
+    const [timeLeft, setTimeLeft] = useState<string>('');
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const deadlineDate = deadline instanceof Timestamp ? deadline.toDate() : new Date(deadline);
+            const now = new Date();
+            const diff = deadlineDate.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                return 'หมดเวลาโบนัส 24 ชั่วโมง';
+            }
+
+            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((diff / 1000 / 60) % 60);
+            const s = Math.floor((diff / 1000) % 60);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        };
+
+        setTimeLeft(calculateTimeLeft());
+        const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
+        return () => clearInterval(timer);
+    }, [deadline]);
+
+    return (
+        <span className="text-neon-cyan drop-shadow-[0_0_10px_rgba(0,255,240,0.8)] font-mono tracking-widest">{timeLeft}</span>
     );
 }
 

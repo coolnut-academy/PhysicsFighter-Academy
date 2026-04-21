@@ -83,6 +83,16 @@ export default function CourseDetailPage() {
         }
 
         if (existingEnrollment) {
+            if (!existingEnrollment.accessGranted && (!existingEnrollment.paymentSlipId || existingEnrollment.paymentSlipId === '')) {
+                e.preventDefault();
+                toast({
+                    title: 'คุณมีการลงทะเบียนที่รอชำระเงินอยู่',
+                    description: 'ระบบกำลังนำคุณไปยังหน้าชำระเงิน...',
+                });
+                router.push(`/checkout/${courseId}?enrollmentId=${existingEnrollment.id}`);
+                return false;
+            }
+
             let isExpired = false;
             let message = 'คุณได้สมัครคอร์สนี้ไปแล้ว';
             let description = 'กรุณาตรวจสอบที่เมนู "คอร์สเรียนของฉัน"';
@@ -103,13 +113,20 @@ export default function CourseDetailPage() {
                 }
             }
 
-            if (!isExpired) {
+            if (!isExpired && existingEnrollment.accessGranted) {
                 e.preventDefault();
                 toast({
                     title: message,
                     description: description,
                 });
                 router.push(`/learn/course/${courseId}`);
+                return false;
+            } else if (!existingEnrollment.accessGranted && existingEnrollment.paymentSlipId) {
+                e.preventDefault();
+                toast({
+                    title: 'รอการตรวจสอบการชำระเงิน',
+                    description: 'คุณได้ส่งสลิปแล้ว กรุณารอแอดมินตรวจสอบ',
+                });
                 return false;
             }
             // If expired, allow to proceed
@@ -159,6 +176,50 @@ export default function CourseDetailPage() {
                         variant: 'destructive',
                     });
                 }
+            }
+            return false;
+        }
+
+        // Handle Paid Course - Pre-Registration before Payment
+        if (course && course.pricing.threeMonths > 0) {
+            e.preventDefault();
+            try {
+                const startDate = new Date();
+                const paymentDeadline = new Date(startDate.getTime() + 24 * 60 * 60 * 1000); // +24 hours
+                
+                const enrollmentData = {
+                    courseId: course.id,
+                    studentId: user.id,
+                    ownerId: course.ownerId,
+                    startDate: serverTimestamp(),
+                    expiresAt: serverTimestamp(), // Placeholder, to be updated when paid
+                    paymentDeadline: paymentDeadline,
+                    selectedDuration: 3, 
+                    status: EnrollmentStatus.ACTIVE,
+                    accessGranted: false, 
+                    paymentSlipId: '', // Blank until upload
+                    pricePaid: 0,
+                    progress: [],
+                    overallProgress: 0,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                };
+
+                const docRef = await addDoc(collection(db, COLLECTIONS.ENROLLMENTS), enrollmentData);
+
+                toast({
+                    title: 'ลงทะเบียนสำเร็จ!',
+                    description: 'ยังเข้าเรียนไม่ได้จนกว่าจะชำระเงิน กรุณาชำระภายใน 24 ชม.',
+                });
+
+                router.push(`/checkout/${course.id}?enrollmentId=${docRef.id}`);
+            } catch (error) {
+                console.error('Error registering paid course:', error);
+                toast({
+                    title: 'เกิดข้อผิดพลาด',
+                    description: 'ไม่สามารถลงทะเบียนได้ในขณะนี้',
+                    variant: 'destructive',
+                });
             }
             return false;
         }
@@ -418,16 +479,15 @@ export default function CourseDetailPage() {
                                 </div>
 
                                 <div className="space-y-4 mb-8">
-                                    <Link
-                                        href={user ? (course.pricing.threeMonths === 0 ? '#' : `/checkout/${course.id}`) : '#'}
-                                        className="block"
+                                    <div
+                                        className="block cursor-pointer"
                                         onClick={handleEnrollClick}
                                     >
                                         <Button className="w-full h-14 bg-fighter-red hover:bg-red-700 text-white border-2 border-black uppercase font-heading text-xl shadow-[4px_4px_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
                                             <Zap className="w-5 h-5 mr-2" />
                                             {course.pricing.threeMonths === 0 ? 'ลงทะเบียนเรียนฟรี' : 'ลงทะเบียนเรียนทันที'}
                                         </Button>
-                                    </Link>
+                                    </div>
 
                                     {/* Super Admin Bypass */}
                                     {user?.role === 'super_admin' && (

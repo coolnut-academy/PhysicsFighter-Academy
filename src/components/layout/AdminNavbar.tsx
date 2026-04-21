@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'; // Import cn
 const navItems = [
           { href: '/admin/dashboard', label: 'ห้องบัญชาการ', icon: LayoutDashboard },
           { href: '/admin/courses', label: 'คอร์สของฉัน', icon: BookOpen },
+          { href: '/admin/students', label: 'นักเรียนของคุณ', icon: Users },
           { href: '/admin/payments', label: 'สลิปชำระเงิน', icon: Receipt },
           { href: '/admin/revenue', label: 'รายได้', icon: DollarSign },
           { href: '/admin/settings', label: 'ตั้งค่า', icon: Settings },

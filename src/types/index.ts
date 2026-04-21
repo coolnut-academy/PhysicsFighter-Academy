@@ -200,6 +200,7 @@ export interface Enrollment {
   selectedDuration: DurationMonths; // 3, 6, or 12 months
   status: EnrollmentStatus;
   accessGranted: boolean; // Admin must approve payment before student can access
+  paymentDeadline?: Timestamp; // Deadline to pay (e.g. 24h after booking)
 
   // Payment Info
   paymentSlipId: string; // Reference to PaymentSlip.id
