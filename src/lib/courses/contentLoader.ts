@@ -285,7 +285,7 @@ export async function loadLessonWithContext(lessonId: string): Promise<{
   const moduleSnap = await getDoc(moduleRef);
   if (!moduleSnap.exists()) return null;
 
-  const module = { id: moduleSnap.id, ...moduleSnap.data() } as CourseModuleV2;
+  const courseModule = { id: moduleSnap.id, ...moduleSnap.data() } as CourseModuleV2;
 
   // Load course
   const courseRef = doc(db, 'courses', lesson.courseId);
@@ -294,7 +294,7 @@ export async function loadLessonWithContext(lessonId: string): Promise<{
 
   const course = { id: courseSnap.id, ...courseSnap.data() } as Course;
 
-  return { lesson, module, course };
+  return { lesson, module: courseModule, course };
 }
 
 // ============================================================================

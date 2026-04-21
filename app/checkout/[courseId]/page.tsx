@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
 import { Loading } from '@/components/shared/Loading';
+import { useAuthStore } from '@/store/useAuthStore';
 
 type CheckoutStep = 'duration' | 'payment' | 'confirmation';
 
@@ -636,7 +637,7 @@ function PaymentStep({
                 </Button>
                 <Button onClick={onNext} className="flex-1">
                     <span className="flex items-center gap-2">
-                        I've Made Payment
+                        I&apos;ve Made Payment
                         <ArrowRight className="w-4 h-4" />
                     </span>
                 </Button>

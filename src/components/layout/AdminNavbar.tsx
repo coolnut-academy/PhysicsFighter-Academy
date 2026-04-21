@@ -12,7 +12,8 @@ import {
           BookOpen, // Added
           Receipt, // Added
           DollarSign, // Added
-          Settings // Added
+          Settings, // Added
+          Users // Added
 } from 'lucide-react';
 import { LogoIcon } from '@/components/ui/Logo';
 import {
